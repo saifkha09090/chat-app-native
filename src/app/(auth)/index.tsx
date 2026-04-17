@@ -1,0 +1,59 @@
+import imagePath from "@/src/constants/imagePath";
+import { Image, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { moderateScale, verticalScale } from "react-native-size-matters";
+
+const Auth = () => {
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}></View>
+      <View style={styles.body}>
+        <Image
+          source={imagePath.logo}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <Text style={styles.whatsapp_text}>WhatsApp</Text>
+      </View>
+      <View style={styles.footer}>
+        <Text style={styles.from_text}>from</Text>
+        <Text style={styles.facebook_text}>Facebook</Text>
+      </View>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: verticalScale(50),
+  },
+  header: {},
+  body: {
+    alignItems: "center",
+    gap: verticalScale(14),
+  },
+  footer: {
+    alignItems: "center",
+  },
+  from_text: {
+    fontSize: moderateScale(12),
+    color: "#867373",
+  },
+  facebook_text: {
+    fontSize: moderateScale(15),
+    color: "#000",
+  },
+  logo: {
+    height: moderateScale(80),
+    width: moderateScale(80),
+  },
+  whatsapp_text: {
+    fontSize: moderateScale(35),
+    color: "#000",
+  },
+});
+
+export default Auth;
