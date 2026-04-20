@@ -1,55 +1,123 @@
-import { Link } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { supabase } from "@/src/utils/supabase/supabase";
+import { router } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+  FlatList,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { moderateScale, verticalScale } from "react-native-size-matters";
+import { moderateScale, scale } from "react-native-size-matters";
+import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
-const Main = () => {
+const ChatList = () => {
+  const [recentChats, setRecentChats] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchRecentChats();
+  }, []);
+
+  const fetchRecentChats = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("messages")
+      .select(
+        `
+        text,
+        created_at,
+        sender_id,
+        receiver_id,
+        profiles!messages_receiver_id_fkey(full_name, email)
+      `,
+      )
+      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+      .order("created_at", { ascending: false });
+
+    if (!error && data) {
+      setRecentChats(data);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.whatsapp_text}>Chat</Text>
-      </View>
-      <View style={styles.body}>
-        <Link href={"/chat"}>go to chat</Link>
-      </View>
-      {/* <View style={styles.footer}>
-        <Text style={styles.from_text}>from</Text>
-        <Text style={styles.facebook_text}>Facebook</Text>
-      </View> */}
+      <FlatList
+        data={recentChats}
+        keyExtractor={(item, index) => index.toString()}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={styles.chatContainer}
+            onPress={() =>
+              router.push({
+                pathname: "/(main)/chatScreen",
+                params: {
+                  name: item.profiles?.full_name,
+                  receiverId: item.receiver_id,
+                },
+              })
+            }
+          >
+            <Image
+              source={{
+                uri: "https://cdn-icons-png.flaticon.com/512/1144/1144760.png",
+              }}
+              style={styles.profileImg}
+            />
+            <View style={styles.textContainer}>
+              <Text style={styles.nameText}>
+                {item.profiles?.full_name || "User"}
+              </Text>
+              <Text style={styles.msgText} numberOfLines={1}>
+                {item.text}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
+      />
+
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => router.push("/(main)/userSearch")}
+      >
+        <MaterialIcons name="add-comment" size={28} color="white" />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {},
-  header: {
-    paddingHorizontal: verticalScale(20),
-    paddingVertical: verticalScale(20),
-    backgroundColor: "#008069",
-  },
-  body: {
-    alignItems: "center",
-    gap: verticalScale(14),
-  },
-  footer: {
+  container: { flex: 1, backgroundColor: "#fff" },
+  chatContainer: {
+    flexDirection: "row",
+    padding: scale(15),
     alignItems: "center",
   },
-  from_text: {
-    fontSize: moderateScale(12),
-    color: "#867373",
+  profileImg: {
+    width: moderateScale(50),
+    height: moderateScale(50),
+    borderRadius: 25,
   },
-  facebook_text: {
-    fontSize: moderateScale(15),
-    color: "#000",
-  },
-  logo: {
-    height: moderateScale(80),
-    width: moderateScale(80),
-  },
-  whatsapp_text: {
-    fontSize: moderateScale(20),
-    color: "#fff",
+  textContainer: { flex: 1, marginLeft: scale(15) },
+  nameText: { fontSize: 16, fontWeight: "bold" },
+  msgText: { color: "#666" },
+  fab: {
+    position: "absolute",
+    bottom: 70,
+    right: 20,
+    backgroundColor: "#25D366",
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 5,
   },
 });
 
-export default Main;
+export default ChatList;
