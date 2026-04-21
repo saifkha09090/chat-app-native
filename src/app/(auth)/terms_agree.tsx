@@ -30,7 +30,11 @@ const TermsAgree = () => {
             marginBottom: verticalScale(100),
           }}
         >
-          <ButtonComp title="AGREE AND CONTINUE" onPress={onPress} />
+          <ButtonComp
+            title="AGREE AND CONTINUE"
+            onPress={onPress}
+            style={{ backgroundColor: "#00A884" }}
+          />
         </View>
       </View>
       <View style={styles.footer}>

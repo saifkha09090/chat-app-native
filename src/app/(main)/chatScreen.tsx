@@ -68,10 +68,44 @@ const ChatScreen = () => {
   const sendMessage = async () => {
     if (inputText.trim() === "" || !currentUserId) return;
 
+    let { data: conversation, error: fetchError } = await supabase
+      .from("conversations")
+      .select("*")
+      .or(
+        `and(user1.eq.${currentUserId},user2.eq.${receiverId}),and(user1.eq.${receiverId},user2.eq.${currentUserId})`,
+      )
+      .maybeSingle();
+
+    if (fetchError) {
+      console.log("Fetch Error:", fetchError.message);
+      return;
+    }
+
+    if (!conversation) {
+      const { data: newConv, error: convError } = await supabase
+        .from("conversations")
+        .insert([
+          {
+            user1: currentUserId,
+            user2: receiverId,
+          },
+        ])
+        .select()
+        .single();
+
+      if (convError) {
+        console.log("Conversation Error:", convError.message);
+        return;
+      }
+
+      conversation = newConv;
+    }
+
     const newMessage = {
       text: inputText,
       sender_id: currentUserId,
       receiver_id: receiverId,
+      conversation_id: conversation.id,
     };
 
     const { error } = await supabase.from("messages").insert([newMessage]);
@@ -120,7 +154,7 @@ const ChatScreen = () => {
         inverted
       />
 
-      <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={20}>
+      <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={70}>
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}

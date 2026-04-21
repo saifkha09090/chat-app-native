@@ -3,14 +3,14 @@ import { supabase } from "@/src/utils/supabase/supabase";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
@@ -115,11 +115,12 @@ const Signup = () => {
           <ButtonComp
             title="Sign Up"
             onPress={handleSignup}
-            style={{ width: scale(250) }}
+            style={{ width: scale(250), backgroundColor: "#00A884" }}
           />
         )}
 
         <TouchableOpacity
+          activeOpacity={0.8}
           onPress={() => router.back()}
           style={{ marginTop: verticalScale(20) }}
         >

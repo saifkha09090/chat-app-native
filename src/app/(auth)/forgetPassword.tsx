@@ -3,44 +3,45 @@ import { supabase } from "@/src/utils/supabase/supabase";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
-const Login = () => {
+const ForgotPassword = () => {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Please enter both email and password.");
+  const handleResetPassword = async () => {
+    if (!email) {
+      Alert.alert("Error", "Please enter your email.");
       return;
     }
 
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password,
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: "expo://192.168.0.183:8081",
     });
 
     setLoading(false);
 
     if (error) {
-      Alert.alert("Login Failed", error.message);
+      Alert.alert("Error", error.message);
     } else {
-      console.log("User logged in:", data.user?.email);
-      router.replace("/(main)");
+      Alert.alert(
+        "Success",
+        "Password reset email has been sent. Please check your inbox.",
+      );
+      router.back();
     }
   };
 
@@ -48,9 +49,9 @@ const Login = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.heading_container}>
-          <Text style={styles.heading}>Welcome Back</Text>
+          <Text style={styles.heading}>Forgot Password</Text>
           <Text style={styles.description}>
-            Please enter your details to login to your account.
+            Enter your email to reset your password.
           </Text>
         </View>
 
@@ -67,28 +68,6 @@ const Login = () => {
             />
           </View>
           <View style={styles.horizontal_line} />
-
-          <View
-            style={[styles.input_wrapper, { marginTop: verticalScale(20) }]}
-          >
-            <MaterialIcons name="lock" size={20} color="#05aa82" />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-          </View>
-          <View style={styles.horizontal_line} />
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={styles.forgot_pass}
-            onPress={() => router.push("/(auth)/forgetPassword")}
-          >
-            <Text style={styles.link_description}>Forgot Password?</Text>
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -101,20 +80,20 @@ const Login = () => {
           <ActivityIndicator size="large" color="#05aa82" />
         ) : (
           <ButtonComp
-            title="Login"
-            onPress={handleLogin}
+            title="Send Reset Link"
+            onPress={handleResetPassword}
             style={{ width: scale(250), backgroundColor: "#00A884" }}
           />
         )}
 
         <TouchableOpacity
           activeOpacity={0.8}
-          onPress={() => router.push("/signup")}
+          onPress={() => router.back()}
           style={{ marginTop: verticalScale(20) }}
         >
           <Text style={styles.description}>
-            Don't have an account?{" "}
-            <Text style={styles.link_description}>Sign Up</Text>
+            Remember your password?{" "}
+            <Text style={styles.link_description}>Login</Text>
           </Text>
         </TouchableOpacity>
       </KeyboardAvoidingView>
@@ -172,14 +151,10 @@ const styles = StyleSheet.create({
     color: "#05aa82",
     fontWeight: "bold",
   },
-  forgot_pass: {
-    alignSelf: "flex-end",
-    marginTop: verticalScale(10),
-  },
   footer: {
     alignItems: "center",
     width: "100%",
   },
 });
 
-export default Login;
+export default ForgotPassword;

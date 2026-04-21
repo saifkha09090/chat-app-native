@@ -2,14 +2,14 @@ import { supabase } from "@/src/utils/supabase/supabase";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-    FlatList,
-    Image,
-    KeyboardAvoidingView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { moderateScale, scale } from "react-native-size-matters";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
@@ -20,11 +20,16 @@ const userSearch = () => {
 
   const handleSearch = async (text: string) => {
     setSearchEmail(text);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (text.length > 2) {
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
-        .ilike("email", `%${text}%`);
+        .ilike("email", `%${text}%`)
+        .neq("email", user?.email);
 
       if (!error) setUsers(data);
     } else {
@@ -50,6 +55,7 @@ const userSearch = () => {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <TouchableOpacity
+            activeOpacity={0.8}
             style={styles.userCard}
             onPress={() =>
               router.push({

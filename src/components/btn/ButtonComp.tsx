@@ -15,7 +15,6 @@ const ButtonComp = ({ title, onPress, style }: any) => {
 };
 const styles = StyleSheet.create({
   btn_container: {
-    backgroundColor: "#00A884",
     width: "100%",
     paddingVertical: verticalScale(10),
     paddingHorizontal: scale(10),
