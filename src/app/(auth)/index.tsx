@@ -39,6 +39,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingVertical: verticalScale(50),
+    backgroundColor: "#292F3F",
   },
   header: {},
   body: {
@@ -55,7 +56,7 @@ const styles = StyleSheet.create({
   facebook_text: {
     fontSize: moderateScale(15),
     fontWeight: "600",
-    color: "#000",
+    color: "#fff",
   },
   logo: {
     height: moderateScale(80),
@@ -63,7 +64,7 @@ const styles = StyleSheet.create({
   },
   whatsapp_text: {
     fontSize: moderateScale(35),
-    color: "#000",
+    color: "#fff",
   },
 });
 

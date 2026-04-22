@@ -4,12 +4,12 @@ import React, { useEffect, useState } from "react";
 import {
   Alert,
   FlatList,
-  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
 const ChatList = () => {
@@ -17,33 +17,37 @@ const ChatList = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    let messagesChannel: any;
+    let msgChannel: any;
     let convoChannel: any;
 
-    const setup = async () => {
-      await init();
+    const initApp = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      messagesChannel = subscribeToMessages();
-      convoChannel = subscribeToConversations();
+      if (!user) return;
+
+      setCurrentUserId(user.id);
+      await fetchRecentChats(user.id);
+
+      msgChannel = subscribeToMessages(user.id);
+      convoChannel = subscribeToConversations(user.id);
     };
 
-    setup();
+    initApp();
 
     return () => {
-      if (messagesChannel) supabase.removeChannel(messagesChannel);
+      if (msgChannel) supabase.removeChannel(msgChannel);
       if (convoChannel) supabase.removeChannel(convoChannel);
     };
   }, []);
 
-  const init = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) return;
-
-    setCurrentUserId(user.id);
-    fetchRecentChats(user.id);
+  const sortChats = (chats: any[]) => {
+    return chats.sort(
+      (a, b) =>
+        new Date(b.lastMessageTime).getTime() -
+        new Date(a.lastMessageTime).getTime(),
+    );
   };
 
   const fetchRecentChats = async (uid?: string) => {
@@ -64,8 +68,7 @@ const ChatList = () => {
         user2_profile:profiles!conversations_user2_fkey (full_name)
       `,
       )
-      .or(`user1.eq.${userId},user2.eq.${userId}`)
-      .order("created_at", { ascending: false });
+      .or(`user1.eq.${userId},user2.eq.${userId}`);
 
     const filtered = (data || []).filter((chat) => {
       if (chat.user1 === userId && chat.deleted_by_user1) return false;
@@ -91,24 +94,27 @@ const ChatList = () => {
       }),
     );
 
-    setRecentChats(withMessages);
+    setRecentChats(sortChats(withMessages));
   };
 
-  const subscribeToMessages = () => {
-    const channel = supabase
-      .channel("chatlist_messages")
+  const subscribeToMessages = (userId: string) => {
+    return supabase
+      .channel("messages_channel")
       .on(
         "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-        },
-        (payload) => {
-          const msg = payload.new;
+        { event: "INSERT", schema: "public", table: "messages" },
+        async (payload) => {
+          const msg = payload.new as any;
 
-          setRecentChats((prev) =>
-            prev.map((chat) =>
+          setRecentChats((prev) => {
+            const exists = prev.find((c) => c.id === msg.conversation_id);
+
+            if (!exists) {
+              fetchRecentChats(userId);
+              return prev;
+            }
+
+            const updated = prev.map((chat) =>
               chat.id === msg.conversation_id
                 ? {
                     ...chat,
@@ -116,28 +122,22 @@ const ChatList = () => {
                     lastMessageTime: msg.created_at,
                   }
                 : chat,
-            ),
-          );
+            );
+
+            return sortChats([...updated]);
+          });
         },
       )
       .subscribe();
-
-    return channel;
   };
 
-  const subscribeToConversations = () => {
-    const channel = supabase
-      .channel("chatlist_conversations")
+  const subscribeToConversations = (userId: string) => {
+    return supabase
+      .channel("conversations_channel")
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "conversations",
-        },
+        { event: "*", schema: "public", table: "conversations" },
         async (payload) => {
-          const convo = payload.new as any;
-
           if (payload.eventType === "DELETE") {
             setRecentChats((prev) =>
               prev.filter((c) => c.id !== (payload.old as any).id),
@@ -145,37 +145,59 @@ const ChatList = () => {
             return;
           }
 
+          const convo = payload.new as any;
+
           const { data } = await supabase
             .from("conversations")
             .select(
               `
-            id,
-            created_at,
-            user1,
-            user2,
-            deleted_by_user1,
-            deleted_by_user2,
-            user1_profile:profiles!conversations_user1_fkey (full_name),
-            user2_profile:profiles!conversations_user2_fkey (full_name)
-          `,
+              id,
+              created_at,
+              user1,
+              user2,
+              deleted_by_user1,
+              deleted_by_user2,
+              user1_profile:profiles!conversations_user1_fkey (full_name),
+              user2_profile:profiles!conversations_user2_fkey (full_name)
+            `,
             )
             .eq("id", convo.id)
             .single();
 
           if (!data) return;
 
+          if (
+            (data.user1 === userId && data.deleted_by_user1) ||
+            (data.user2 === userId && data.deleted_by_user2)
+          ) {
+            return;
+          }
+
           setRecentChats((prev) => {
             const exists = prev.find((c) => c.id === data.id);
 
-            if (!exists) return [data, ...prev];
+            let updated;
 
-            return prev.map((c) => (c.id === data.id ? { ...c, ...data } : c));
+            if (!exists) {
+              updated = [
+                {
+                  ...data,
+                  lastMessage: "No messages yet",
+                  lastMessageTime: data.created_at,
+                },
+                ...prev,
+              ];
+            } else {
+              updated = prev.map((c) =>
+                c.id === data.id ? { ...c, ...data } : c,
+              );
+            }
+
+            return sortChats([...updated]);
           });
         },
       )
       .subscribe();
-
-    return channel;
   };
 
   const deleteChat = (chat: any) => {
@@ -189,13 +211,19 @@ const ChatList = () => {
 
           const isUser1 = chat.user1 === currentUserId;
 
-          await supabase
+          const updatePayload = isUser1
+            ? { deleted_by_user1: true }
+            : { deleted_by_user2: true };
+
+          const { error } = await supabase
             .from("conversations")
-            .update(
-              isUser1 ? { deleted_by_user1: true } : { deleted_by_user2: true },
-            )
+            .update(updatePayload)
             .eq("id", chat.id);
 
+          if (error) {
+            console.log("Delete error:", error.message);
+            return;
+          }
           setRecentChats((prev) => prev.filter((c) => c.id !== chat.id));
         },
       },
@@ -214,7 +242,6 @@ const ChatList = () => {
 
   const getOtherUser = (item: any) => {
     if (!currentUserId) return null;
-
     return item.user1 === currentUserId
       ? item.user2_profile
       : item.user1_profile;
@@ -224,6 +251,26 @@ const ChatList = () => {
     if (!currentUserId) return null;
     return item.user1 === currentUserId ? item.user2 : item.user1;
   };
+
+  if (recentChats.length === 0) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { alignItems: "center", justifyContent: "center" },
+        ]}
+      >
+        <Text>Chat Not Found</Text>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={styles.fab}
+          onPress={() => router.push("/(main)/userSearch")}
+        >
+          <MaterialIcons name="add-comment" size={28} color="white" />
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -237,6 +284,7 @@ const ChatList = () => {
 
           return (
             <TouchableOpacity
+              activeOpacity={0.8}
               style={styles.chatItem}
               onPress={() =>
                 router.push({
@@ -248,11 +296,11 @@ const ChatList = () => {
                 })
               }
             >
-              <Image
-                source={{
-                  uri: "https://cdn-icons-png.flaticon.com/512/1144/1144760.png",
-                }}
+              <FontAwesome5
                 style={styles.avatar}
+                name="user-circle"
+                size={50}
+                color="#9e9d9d"
               />
 
               <View style={styles.chatInfo}>
@@ -264,14 +312,16 @@ const ChatList = () => {
                   </Text>
                 </View>
 
-                <Text style={styles.message} numberOfLines={1}>
-                  {item.lastMessage}
-                </Text>
-              </View>
+                <View style={styles.rowTop}>
+                  <Text style={styles.message} numberOfLines={1}>
+                    {item.lastMessage}
+                  </Text>
 
-              {/* <TouchableOpacity onPress={() => deleteChat(item)}>
-                <MaterialIcons name="delete" size={22} color="red" />
-              </TouchableOpacity> */}
+                  <TouchableOpacity onPress={() => deleteChat(item)}>
+                    <MaterialIcons name="delete" size={22} color="#df1313" />
+                  </TouchableOpacity>
+                </View>
+              </View>
             </TouchableOpacity>
           );
         }}
@@ -288,19 +338,19 @@ const ChatList = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#ECE5DD" },
+  container: { flex: 1, backgroundColor: "#292F3F" },
 
   chatItem: {
     flexDirection: "row",
     padding: 12,
-    backgroundColor: "#fff",
     alignItems: "center",
   },
 
   separator: {
     height: 1,
-    backgroundColor: "#eee",
-    marginLeft: 80,
+    backgroundColor: "#000",
+    marginLeft: 10,
+    marginRight: 10,
   },
 
   avatar: {
@@ -322,23 +372,24 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     fontWeight: "600",
+    color: "#fff",
   },
 
   time: {
     fontSize: 12,
-    color: "#888",
+    color: "#fff",
   },
 
   message: {
     marginTop: 3,
-    color: "#666",
+    color: "#ffefef",
   },
 
   fab: {
     position: "absolute",
     bottom: 30,
     right: 20,
-    backgroundColor: "#25D366",
+    backgroundColor: "#0495d3",
     width: 60,
     height: 60,
     borderRadius: 30,

@@ -33,7 +33,7 @@ const TermsAgree = () => {
           <ButtonComp
             title="AGREE AND CONTINUE"
             onPress={onPress}
-            style={{ backgroundColor: "#00A884" }}
+            style={{ backgroundColor: "#03A9F1" }}
           />
         </View>
       </View>
@@ -47,10 +47,10 @@ const TermsAgree = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "white",
+    backgroundColor: "#292F3F",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: verticalScale(60),
+    paddingVertical: verticalScale(50),
     paddingHorizontal: scale(10),
   },
   header: {
@@ -62,18 +62,18 @@ const styles = StyleSheet.create({
   },
   from_text: {
     fontSize: moderateScale(12),
-    color: "#867373",
+    color: "#ffefef",
   },
   facebook_text: {
     fontSize: moderateScale(15),
     fontWeight: "600",
-    color: "#000",
+    color: "#fff",
     letterSpacing: scale(2),
   },
   welcome_text: {
     fontSize: moderateScale(30),
     fontWeight: "bold",
-    color: "#000",
+    color: "#fff",
     marginBottom: verticalScale(10),
   },
   welcome_img: {
@@ -84,10 +84,10 @@ const styles = StyleSheet.create({
   description_text: {
     textAlign: "center",
     fontSize: moderateScale(13),
-    color: "#000",
+    color: "#fff",
   },
   link_text: {
-    color: "#0c42cc",
+    color: "#6490ff",
   },
 });
 

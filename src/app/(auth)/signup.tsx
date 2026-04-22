@@ -53,6 +53,7 @@ const Signup = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View></View>
       <View style={styles.header}>
         <View style={styles.heading_container}>
           <Text style={styles.heading}>Create Account</Text>
@@ -63,10 +64,11 @@ const Signup = () => {
 
         <View style={styles.input_main_container}>
           <View style={styles.input_wrapper}>
-            <MaterialIcons name="person" size={20} color="#05aa82" />
+            <MaterialIcons name="person" size={20} color="#29b8f5" />
             <TextInput
               style={styles.input}
               placeholder="Full Name"
+              placeholderTextColor="#fff"
               value={name}
               onChangeText={setName}
             />
@@ -76,10 +78,11 @@ const Signup = () => {
           <View
             style={[styles.input_wrapper, { marginTop: verticalScale(20) }]}
           >
-            <MaterialIcons name="email" size={20} color="#05aa82" />
+            <MaterialIcons name="email" size={20} color="#29b8f5" />
             <TextInput
               style={styles.input}
               placeholder="Email Address"
+              placeholderTextColor="#fff"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -91,10 +94,11 @@ const Signup = () => {
           <View
             style={[styles.input_wrapper, { marginTop: verticalScale(20) }]}
           >
-            <MaterialIcons name="lock" size={20} color="#05aa82" />
+            <MaterialIcons name="lock" size={20} color="#29b8f5" />
             <TextInput
               style={styles.input}
               placeholder="Password"
+              placeholderTextColor="#fff"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -110,12 +114,12 @@ const Signup = () => {
         style={styles.footer}
       >
         {loading ? (
-          <ActivityIndicator size="large" color="#05aa82" />
+          <ActivityIndicator size="large" color="#29b8f5" />
         ) : (
           <ButtonComp
             title="Sign Up"
             onPress={handleSignup}
-            style={{ width: scale(250), backgroundColor: "#00A884" }}
+            style={{ width: scale(250), backgroundColor: "#03A9F1" }}
           />
         )}
 
@@ -141,7 +145,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: verticalScale(40),
     paddingHorizontal: scale(30),
-    backgroundColor: "#fff",
+    backgroundColor: "#292F3F",
   },
   header: {
     width: "100%",
@@ -152,14 +156,14 @@ const styles = StyleSheet.create({
   },
   heading: {
     fontSize: moderateScale(24),
-    color: "#000",
+    color: "#fff",
     fontWeight: "bold",
     textAlign: "center",
   },
   description: {
     textAlign: "center",
     fontSize: moderateScale(14),
-    color: "#666",
+    color: "#ffefef",
   },
   input_main_container: {
     width: "100%",
@@ -173,15 +177,15 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: moderateScale(16),
-    color: "#000",
+    color: "#fff",
   },
   horizontal_line: {
     width: "100%",
     height: verticalScale(1),
-    backgroundColor: "#05aa82",
+    backgroundColor: "#29b8f5",
   },
   link_description: {
-    color: "#05aa82",
+    color: "#29b8f5",
     fontWeight: "bold",
   },
   footer: {

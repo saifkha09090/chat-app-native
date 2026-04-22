@@ -10,15 +10,15 @@ const profile = () => {
   const [userInfo, setUserInfo] = useState<User | null>(null);
 
   useEffect(() => {
+    const getUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setUserInfo(user);
+    };
+
     getUser();
   }, []);
-
-  const getUser = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    setUserInfo(user);
-  };
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -35,7 +35,7 @@ const profile = () => {
       <View>
         <Image
           source={{
-            uri: "https://cdn-icons-png.flaticon.com/512/1144/1144760.png",
+            uri: "https://static.vecteezy.com/system/resources/thumbnails/037/468/797/small/user-icon-illustration-for-graphic-design-logo-web-site-social-media-mobile-app-ui-png.png",
           }}
           style={styles.profileImg}
         />
@@ -62,6 +62,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     flex: 1,
     gap: verticalScale(20),
+    backgroundColor: "#292F3F",
   },
   profileImg: {
     width: moderateScale(150),

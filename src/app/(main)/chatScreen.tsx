@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
@@ -142,7 +143,7 @@ const ChatScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["bottom"]}>
       <Stack.Screen options={{ title: name as string }} />
 
       <FlatList
@@ -177,14 +178,14 @@ const ChatScreen = () => {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ECE5DD",
+    backgroundColor: "#292F3F",
   },
   listPadding: { paddingHorizontal: scale(10), paddingBottom: scale(10) },
   messageBubble: {
@@ -193,22 +194,22 @@ const styles = StyleSheet.create({
     marginVertical: verticalScale(5),
     maxWidth: "80%",
     elevation: 1,
-    shadowColor: "#000",
+    shadowColor: "#fff",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 1,
   },
   myMessage: {
     alignSelf: "flex-end",
-    backgroundColor: "#dcf8c6",
+    backgroundColor: "#272A35",
     borderTopRightRadius: 0,
   },
   otherMessage: {
     alignSelf: "flex-start",
-    backgroundColor: "#fff",
+    backgroundColor: "#373E4E",
     borderTopLeftRadius: 0,
   },
-  messageText: { fontSize: moderateScale(16), color: "#000" },
+  messageText: { fontSize: moderateScale(16), color: "#fff" },
   timeText: {
     fontSize: moderateScale(10),
     color: "#888",

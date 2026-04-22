@@ -66,7 +66,7 @@ const userSearch = () => {
           >
             <Image
               source={{
-                uri: "https://cdn-icons-png.flaticon.com/512/1144/1144760.png",
+                uri: "https://static.vecteezy.com/system/resources/thumbnails/037/468/797/small/user-icon-illustration-for-graphic-design-logo-web-site-social-media-mobile-app-ui-png.png",
               }}
               style={styles.avatar}
             />
@@ -82,7 +82,7 @@ const userSearch = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff", padding: scale(10) },
+  container: { flex: 1, backgroundColor: "#292F3F", padding: scale(10) },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
