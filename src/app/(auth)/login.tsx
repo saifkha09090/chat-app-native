@@ -94,7 +94,7 @@ const Login = () => {
 
       <KeyboardAvoidingView
         behavior="padding"
-        keyboardVerticalOffset={20}
+        keyboardVerticalOffset={verticalScale(20)}
         style={styles.footer}
       >
         {loading ? (

@@ -17,8 +17,22 @@ const ChatList = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    init();
-    subscribeToMessages();
+    let messagesChannel: any;
+    let convoChannel: any;
+
+    const setup = async () => {
+      await init();
+
+      messagesChannel = subscribeToMessages();
+      convoChannel = subscribeToConversations();
+    };
+
+    setup();
+
+    return () => {
+      if (messagesChannel) supabase.removeChannel(messagesChannel);
+      if (convoChannel) supabase.removeChannel(convoChannel);
+    };
   }, []);
 
   const init = async () => {
@@ -36,7 +50,7 @@ const ChatList = () => {
     const userId = uid || currentUserId;
     if (!userId) return;
 
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("conversations")
       .select(
         `
@@ -46,18 +60,12 @@ const ChatList = () => {
         user2,
         deleted_by_user1,
         deleted_by_user2,
-        user1_profile:profiles!conversations_user1_fkey (
-          full_name
-        ),
-        user2_profile:profiles!conversations_user2_fkey (
-          full_name
-        )
+        user1_profile:profiles!conversations_user1_fkey (full_name),
+        user2_profile:profiles!conversations_user2_fkey (full_name)
       `,
       )
       .or(`user1.eq.${userId},user2.eq.${userId}`)
       .order("created_at", { ascending: false });
-
-    if (error) return;
 
     const filtered = (data || []).filter((chat) => {
       if (chat.user1 === userId && chat.deleted_by_user1) return false;
@@ -88,7 +96,7 @@ const ChatList = () => {
 
   const subscribeToMessages = () => {
     const channel = supabase
-      .channel("chatlist_realtime")
+      .channel("chatlist_messages")
       .on(
         "postgres_changes",
         {
@@ -100,22 +108,74 @@ const ChatList = () => {
           const msg = payload.new;
 
           setRecentChats((prev) =>
-            prev.map((chat) => {
-              if (chat.id === msg.conversation_id) {
-                return {
-                  ...chat,
-                  lastMessage: msg.text,
-                  lastMessageTime: msg.created_at,
-                };
-              }
-              return chat;
-            }),
+            prev.map((chat) =>
+              chat.id === msg.conversation_id
+                ? {
+                    ...chat,
+                    lastMessage: msg.text,
+                    lastMessageTime: msg.created_at,
+                  }
+                : chat,
+            ),
           );
         },
       )
       .subscribe();
 
-    return () => supabase.removeChannel(channel);
+    return channel;
+  };
+
+  const subscribeToConversations = () => {
+    const channel = supabase
+      .channel("chatlist_conversations")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "conversations",
+        },
+        async (payload) => {
+          const convo = payload.new as any;
+
+          if (payload.eventType === "DELETE") {
+            setRecentChats((prev) =>
+              prev.filter((c) => c.id !== (payload.old as any).id),
+            );
+            return;
+          }
+
+          const { data } = await supabase
+            .from("conversations")
+            .select(
+              `
+            id,
+            created_at,
+            user1,
+            user2,
+            deleted_by_user1,
+            deleted_by_user2,
+            user1_profile:profiles!conversations_user1_fkey (full_name),
+            user2_profile:profiles!conversations_user2_fkey (full_name)
+          `,
+            )
+            .eq("id", convo.id)
+            .single();
+
+          if (!data) return;
+
+          setRecentChats((prev) => {
+            const exists = prev.find((c) => c.id === data.id);
+
+            if (!exists) return [data, ...prev];
+
+            return prev.map((c) => (c.id === data.id ? { ...c, ...data } : c));
+          });
+        },
+      )
+      .subscribe();
+
+    return channel;
   };
 
   const deleteChat = (chat: any) => {
@@ -209,10 +269,9 @@ const ChatList = () => {
                 </Text>
               </View>
 
-              {/* 🔥 DELETE BUTTON */}
-              <TouchableOpacity onPress={() => deleteChat(item)}>
+              {/* <TouchableOpacity onPress={() => deleteChat(item)}>
                 <MaterialIcons name="delete" size={22} color="red" />
-              </TouchableOpacity>
+              </TouchableOpacity> */}
             </TouchableOpacity>
           );
         }}
@@ -286,12 +345,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     elevation: 5,
-  },
-
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
   },
 });
 

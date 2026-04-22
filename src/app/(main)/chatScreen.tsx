@@ -153,7 +153,10 @@ const ChatScreen = () => {
         inverted
       />
 
-      <KeyboardAvoidingView behavior="padding">
+      <KeyboardAvoidingView
+        behavior="padding"
+        keyboardVerticalOffset={verticalScale(50)}
+      >
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
