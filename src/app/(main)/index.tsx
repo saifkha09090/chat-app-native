@@ -2,6 +2,7 @@ import { supabase } from "@/src/utils/supabase/supabase";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  Alert,
   FlatList,
   Image,
   StyleSheet,
@@ -16,30 +17,11 @@ const ChatList = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchRecentChats();
-
-    const channel = supabase
-      .channel("realtime-conversations")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "messages",
-        },
-        (payload) => {
-          console.log("New message detected:", payload);
-          fetchRecentChats();
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    init();
+    subscribeToMessages();
   }, []);
 
-  const fetchRecentChats = async () => {
+  const init = async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -47,51 +29,127 @@ const ChatList = () => {
     if (!user) return;
 
     setCurrentUserId(user.id);
+    fetchRecentChats(user.id);
+  };
+
+  const fetchRecentChats = async (uid?: string) => {
+    const userId = uid || currentUserId;
+    if (!userId) return;
 
     const { data, error } = await supabase
       .from("conversations")
       .select(
         `
-      id,
-      created_at,
-      user1,
-      user2,
-      user1_profile:profiles!conversations_user1_fkey (
-        full_name,
-        email
-      ),
-      user2_profile:profiles!conversations_user2_fkey (
-        full_name,
-        email
+        id,
+        created_at,
+        user1,
+        user2,
+        deleted_by_user1,
+        deleted_by_user2,
+        user1_profile:profiles!conversations_user1_fkey (
+          full_name
+        ),
+        user2_profile:profiles!conversations_user2_fkey (
+          full_name
+        )
+      `,
       )
-    `,
-      )
-      .or(`user1.eq.${user.id},user2.eq.${user.id}`)
+      .or(`user1.eq.${userId},user2.eq.${userId}`)
       .order("created_at", { ascending: false });
 
-    if (!error && data) {
-      const chatsWithMessages = await Promise.all(
-        data.map(async (chat) => {
-          const { data: lastMsg } = await supabase
-            .from("messages")
-            .select("text, created_at")
-            .eq("conversation_id", chat.id)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
+    if (error) return;
 
-          return {
-            ...chat,
-            lastMessage: lastMsg?.text || "No messages yet",
-            lastMessageTime: lastMsg?.created_at || chat.created_at,
-          };
-        }),
-      );
+    const filtered = (data || []).filter((chat) => {
+      if (chat.user1 === userId && chat.deleted_by_user1) return false;
+      if (chat.user2 === userId && chat.deleted_by_user2) return false;
+      return true;
+    });
 
-      setRecentChats(chatsWithMessages);
-    } else {
-      console.log(error);
-    }
+    const withMessages = await Promise.all(
+      filtered.map(async (chat) => {
+        const { data: lastMsg } = await supabase
+          .from("messages")
+          .select("text, created_at")
+          .eq("conversation_id", chat.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        return {
+          ...chat,
+          lastMessage: lastMsg?.text || "No messages yet",
+          lastMessageTime: lastMsg?.created_at || chat.created_at,
+        };
+      }),
+    );
+
+    setRecentChats(withMessages);
+  };
+
+  const subscribeToMessages = () => {
+    const channel = supabase
+      .channel("chatlist_realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+        },
+        (payload) => {
+          const msg = payload.new;
+
+          setRecentChats((prev) =>
+            prev.map((chat) => {
+              if (chat.id === msg.conversation_id) {
+                return {
+                  ...chat,
+                  lastMessage: msg.text,
+                  lastMessageTime: msg.created_at,
+                };
+              }
+              return chat;
+            }),
+          );
+        },
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  };
+
+  const deleteChat = (chat: any) => {
+    Alert.alert("Delete Chat", "Delete this chat for you?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          if (!currentUserId) return;
+
+          const isUser1 = chat.user1 === currentUserId;
+
+          await supabase
+            .from("conversations")
+            .update(
+              isUser1 ? { deleted_by_user1: true } : { deleted_by_user2: true },
+            )
+            .eq("id", chat.id);
+
+          setRecentChats((prev) => prev.filter((c) => c.id !== chat.id));
+        },
+      },
+    ]);
+  };
+
+  const formatTime = (date: string) => {
+    const d = new Date(date);
+    return d.toLocaleString([], {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const getOtherUser = (item: any) => {
@@ -104,51 +162,28 @@ const ChatList = () => {
 
   const getReceiverId = (item: any) => {
     if (!currentUserId) return null;
-
     return item.user1 === currentUserId ? item.user2 : item.user1;
   };
-
-  if (recentChats.length === 0) {
-    return (
-      <View
-        style={[
-          styles.container,
-          { alignItems: "center", justifyContent: "center" },
-        ]}
-      >
-        <Text>You don't have any chat</Text>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={styles.fab}
-          onPress={() => router.push("/(main)/userSearch")}
-        >
-          <MaterialIcons name="add-comment" size={28} color="white" />
-        </TouchableOpacity>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
       <FlatList
         data={recentChats}
-        keyExtractor={(item, index) => index.toString()}
-        contentContainerStyle={{ paddingBottom: 10 }}
+        keyExtractor={(item) => item.id}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         renderItem={({ item }) => {
-          const otherUser = getOtherUser(item);
+          const user = getOtherUser(item);
           const receiverId = getReceiverId(item);
 
           return (
             <TouchableOpacity
-              activeOpacity={0.8}
               style={styles.chatItem}
               onPress={() =>
                 router.push({
                   pathname: "/(main)/chatScreen",
                   params: {
-                    name: otherUser?.full_name || "User",
-                    receiverId: receiverId,
+                    name: user?.full_name || "User",
+                    receiverId,
                   },
                 })
               }
@@ -162,15 +197,10 @@ const ChatList = () => {
 
               <View style={styles.chatInfo}>
                 <View style={styles.rowTop}>
-                  <Text style={styles.name}>
-                    {otherUser?.full_name || "User"}
-                  </Text>
+                  <Text style={styles.name}>{user?.full_name || "User"}</Text>
 
                   <Text style={styles.time}>
-                    {new Date(item.lastMessageTime).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                    {formatTime(item.lastMessageTime)}
                   </Text>
                 </View>
 
@@ -178,32 +208,32 @@ const ChatList = () => {
                   {item.lastMessage}
                 </Text>
               </View>
+
+              {/* 🔥 DELETE BUTTON */}
+              <TouchableOpacity onPress={() => deleteChat(item)}>
+                <MaterialIcons name="delete" size={22} color="red" />
+              </TouchableOpacity>
             </TouchableOpacity>
           );
         }}
       />
 
       <TouchableOpacity
-        activeOpacity={0.8}
         style={styles.fab}
         onPress={() => router.push("/(main)/userSearch")}
       >
-        <MaterialIcons name="add-comment" size={28} color="white" />
+        <MaterialIcons name="add-comment" size={28} color="#fff" />
       </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#ECE5DD",
-  },
+  container: { flex: 1, backgroundColor: "#ECE5DD" },
 
   chatItem: {
     flexDirection: "row",
-    paddingHorizontal: 15,
-    paddingVertical: 12,
+    padding: 12,
     backgroundColor: "#fff",
     alignItems: "center",
   },
@@ -218,7 +248,6 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: "#ccc",
   },
 
   chatInfo: {
@@ -229,13 +258,11 @@ const styles = StyleSheet.create({
   rowTop: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
   },
 
   name: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#111",
   },
 
   time: {
@@ -244,14 +271,13 @@ const styles = StyleSheet.create({
   },
 
   message: {
-    fontSize: 13,
-    color: "#666",
     marginTop: 3,
+    color: "#666",
   },
 
   fab: {
     position: "absolute",
-    bottom: 70,
+    bottom: 30,
     right: 20,
     backgroundColor: "#25D366",
     width: 60,
@@ -260,6 +286,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     elevation: 5,
+  },
+
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 

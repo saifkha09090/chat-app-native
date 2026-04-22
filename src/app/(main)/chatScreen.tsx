@@ -10,111 +10,114 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
 const ChatScreen = () => {
   const { name, receiverId } = useLocalSearchParams();
+
   const [messages, setMessages] = useState<any[]>([]);
   const [inputText, setInputText] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
 
   useEffect(() => {
-    const setupUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) setCurrentUserId(user.id);
-    };
-    setupUser();
+    init();
+  }, [receiverId]);
 
-    fetchMessages();
+  const init = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
+    if (!user) return;
+
+    setCurrentUserId(user.id);
+
+    const conv = await getOrCreateConversation(user.id, receiverId as string);
+
+    setConversationId(conv.id);
+  };
+
+  useEffect(() => {
+    if (conversationId) {
+      fetchMessages();
+      const unsubscribe = subscribeToMessages();
+
+      return () => {
+        unsubscribe?.();
+      };
+    }
+  }, [conversationId]);
+
+  const getOrCreateConversation = async (userId: string, receiver: string) => {
+    const userA = userId < receiver ? userId : receiver;
+    const userB = userId < receiver ? receiver : userId;
+
+    let { data: conv } = await supabase
+      .from("conversations")
+      .select("*")
+      .eq("user1", userA)
+      .eq("user2", userB)
+      .maybeSingle();
+
+    if (!conv) {
+      const { data: newConv } = await supabase
+        .from("conversations")
+        .insert([{ user1: userA, user2: userB }])
+        .select()
+        .single();
+
+      conv = newConv;
+    }
+
+    return conv;
+  };
+
+  const fetchMessages = async () => {
+    if (!conversationId) return;
+
+    const { data } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: false });
+
+    if (data) setMessages(data);
+  };
+
+  const subscribeToMessages = () => {
     const channel = supabase
-      .channel(`chat_${receiverId}`)
+      .channel(`chat_${conversationId}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages" },
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+        },
         (payload) => {
-          const newMessage = payload.new;
-          setMessages((prev) => [newMessage, ...prev]);
+          setMessages((prev) => [payload.new, ...prev]);
         },
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [receiverId]);
-
-  const fetchMessages = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from("messages")
-      .select("*")
-      .or(
-        `and(sender_id.eq.${user.id},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${user.id})`,
-      )
-      .order("created_at", { ascending: false });
-
-    if (!error && data) setMessages(data);
+    return () => supabase.removeChannel(channel);
   };
 
   const sendMessage = async () => {
-    if (inputText.trim() === "" || !currentUserId) return;
+    if (!inputText.trim() || !currentUserId || !conversationId) return;
 
-    let { data: conversation, error: fetchError } = await supabase
-      .from("conversations")
-      .select("*")
-      .or(
-        `and(user1.eq.${currentUserId},user2.eq.${receiverId}),and(user1.eq.${receiverId},user2.eq.${currentUserId})`,
-      )
-      .maybeSingle();
+    const { error } = await supabase.from("messages").insert([
+      {
+        text: inputText,
+        sender_id: currentUserId,
+        receiver_id: receiverId,
+        conversation_id: conversationId,
+      },
+    ]);
 
-    if (fetchError) {
-      console.log("Fetch Error:", fetchError.message);
-      return;
-    }
-
-    if (!conversation) {
-      const { data: newConv, error: convError } = await supabase
-        .from("conversations")
-        .insert([
-          {
-            user1: currentUserId,
-            user2: receiverId,
-          },
-        ])
-        .select()
-        .single();
-
-      if (convError) {
-        console.log("Conversation Error:", convError.message);
-        return;
-      }
-
-      conversation = newConv;
-    }
-
-    const newMessage = {
-      text: inputText,
-      sender_id: currentUserId,
-      receiver_id: receiverId,
-      conversation_id: conversation.id,
-    };
-
-    const { error } = await supabase.from("messages").insert([newMessage]);
-
-    if (error) {
-      console.log("Send Error:", error.message);
-    } else {
-      setInputText("");
-    }
+    if (!error) setInputText("");
   };
 
   const renderMessage = ({ item }: { item: any }) => {
@@ -139,49 +142,48 @@ const ChatScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
-      <Stack.Screen
-        options={{
-          headerTitle: (name as string) || "Chat",
-        }}
-      />
+    <View style={styles.container}>
+      <Stack.Screen options={{ title: name as string }} />
 
       <FlatList
         data={messages}
         renderItem={renderMessage}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listPadding}
         inverted
       />
 
-      <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={70}>
+      <KeyboardAvoidingView behavior="padding">
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
-            placeholder="Type a message..."
             value={inputText}
             onChangeText={setInputText}
-            multiline
+            placeholder="Type message..."
           />
+
           <TouchableOpacity
             style={[
-              styles.sendButton,
+              styles.sendBtn,
               { opacity: inputText.length > 0 ? 1 : 0.6 },
             ]}
-            onPress={sendMessage}
             disabled={inputText.length === 0}
+            onPress={sendMessage}
           >
             <MaterialIcons name="send" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#ece5dd" },
-  listPadding: { padding: scale(10) },
+  container: {
+    flex: 1,
+    backgroundColor: "#ECE5DD",
+  },
+  listPadding: { paddingHorizontal: scale(10), paddingBottom: scale(10) },
   messageBubble: {
     padding: moderateScale(10),
     borderRadius: moderateScale(10),
@@ -225,7 +227,7 @@ const styles = StyleSheet.create({
     marginRight: scale(10),
     maxHeight: 100,
   },
-  sendButton: {
+  sendBtn: {
     backgroundColor: "#05aa82",
     width: 45,
     height: 45,

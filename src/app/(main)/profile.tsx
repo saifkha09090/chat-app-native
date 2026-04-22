@@ -39,12 +39,12 @@ const profile = () => {
           }}
           style={styles.profileImg}
         />
-        <View style={styles.text_container}>
-          <Text style={styles.profile_text}>
-            Name: {userInfo?.user_metadata?.full_name}
-          </Text>
-          <Text style={styles.profile_text}>Email: {userInfo?.email}</Text>
-        </View>
+      </View>
+      <View style={styles.text_container}>
+        <Text style={styles.profile_text}>
+          Name: {userInfo?.user_metadata?.full_name}
+        </Text>
+        <Text style={styles.profile_text}>Email: {userInfo?.email}</Text>
       </View>
       <View>
         <ButtonComp
