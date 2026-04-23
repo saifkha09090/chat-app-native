@@ -23,7 +23,7 @@ const Auth = () => {
           style={styles.logo}
           resizeMode="contain"
         />
-        <Text style={styles.whatsapp_text}>WhatsApp</Text>
+        <Text style={styles.whatsapp_text}>Chat app</Text>
       </View>
       <View style={styles.footer}>
         <Text style={styles.from_text}>from</Text>

@@ -1,8 +1,13 @@
 import { supabase } from "@/src/utils/supabase/supabase";
+import { File } from "expo-file-system";
+import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   StyleSheet,
   Text,
@@ -12,6 +17,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
+import FontAwesome from "react-native-vector-icons/FontAwesome";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
 const ChatScreen = () => {
@@ -21,6 +27,7 @@ const ChatScreen = () => {
   const [inputText, setInputText] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     init();
@@ -121,31 +128,119 @@ const ChatScreen = () => {
     if (!error) setInputText("");
   };
 
+  const handlePickAndUpload = async () => {
+    try {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission required",
+          "Please allow access to upload images.",
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: "images",
+        allowsEditing: false,
+        allowsMultipleSelection: false,
+        quality: 0.8,
+      });
+
+      if (result.canceled) return;
+
+      const asset = result.assets[0];
+      setUploading(true);
+
+      const ext =
+        asset.fileName?.split(".").pop()?.toLowerCase() ||
+        asset.uri.split(".").pop()?.toLowerCase() ||
+        "jpg";
+
+      const fileName = `${currentUserId ?? "anonymous"}/${Date.now()}.${ext}`;
+
+      const file = new File(asset.uri);
+      const bytes = await file.bytes();
+
+      const { error: uploadError } = await supabase.storage
+        .from("images")
+        .upload(fileName, bytes, {
+          contentType: asset.mimeType ?? `image/${ext}`,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from("images").getPublicUrl(fileName);
+
+      const publicUrl = data.publicUrl;
+
+      const { error: msgError } = await supabase.from("messages").insert([
+        {
+          image: publicUrl,
+          sender_id: currentUserId,
+          receiver_id: receiverId,
+          conversation_id: conversationId,
+        },
+      ]);
+
+      if (msgError) {
+        console.log("Message insert error:", msgError);
+      }
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      const message =
+        error instanceof Error ? error.message : "Something went wrong";
+      Alert.alert("Error", message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const renderMessage = ({ item }: { item: any }) => {
     const isMe = item.sender_id === currentUserId;
 
     return (
-      <View
-        style={[
-          styles.messageBubble,
-          isMe ? styles.myMessage : styles.otherMessage,
-        ]}
-      >
-        <Text style={styles.messageText}>{item.text}</Text>
-        <Text style={styles.timeText}>
-          {new Date(item.created_at).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </Text>
-      </View>
+      <>
+        {!item.text ? (
+          <View
+            style={[
+              styles.messageBubbleImg,
+              isMe ? styles.myMessage : styles.otherMessage,
+            ]}
+          >
+            <Image source={{ uri: item.image }} style={styles.image} />
+            <Text style={styles.timeTextImg}>
+              {new Date(item.created_at).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </Text>
+          </View>
+        ) : (
+          <View
+            style={[
+              styles.messageBubble,
+              isMe ? styles.myMessage : styles.otherMessage,
+            ]}
+          >
+            <Text style={styles.messageText}>{item.text}</Text>
+            <Text style={styles.timeText}>
+              {new Date(item.created_at).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </Text>
+          </View>
+        )}
+      </>
     );
   };
-
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
-      <Stack.Screen options={{ title: name as string }} />
-
+      <Stack.Screen
+        options={{ title: name as string, headerBackTitleStyle: styles.stack }}
+      />
       <FlatList
         data={messages}
         renderItem={renderMessage}
@@ -155,8 +250,8 @@ const ChatScreen = () => {
       />
 
       <KeyboardAvoidingView
-        behavior="padding"
-        keyboardVerticalOffset={verticalScale(50)}
+        behavior={"padding"}
+        keyboardVerticalOffset={verticalScale(70)}
       >
         <View style={styles.inputContainer}>
           <TextInput
@@ -164,7 +259,20 @@ const ChatScreen = () => {
             value={inputText}
             onChangeText={setInputText}
             placeholder="Type message..."
+            placeholderTextColor="#96979d"
           />
+          <TouchableOpacity
+            style={styles.button}
+            activeOpacity={0.85}
+            onPress={handlePickAndUpload}
+            disabled={uploading}
+          >
+            {uploading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <FontAwesome name="camera" size={24} color="#fff" />
+            )}
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={[
@@ -186,6 +294,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#292F3F",
+    fontFamily: "System",
+  },
+  stack: {
+    textTransform: "capitalize",
   },
   listPadding: { paddingHorizontal: scale(10), paddingBottom: scale(10) },
   messageBubble: {
@@ -199,40 +311,74 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 1,
   },
+  messageBubbleImg: {
+    marginVertical: verticalScale(5),
+    maxWidth: "80%",
+    position: "relative",
+    elevation: 1,
+    shadowColor: "#fff",
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
+  },
   myMessage: {
     alignSelf: "flex-end",
-    backgroundColor: "#272A35",
+    backgroundColor: "#272a35",
     borderTopRightRadius: 0,
+    color: "#5d5f68",
   },
   otherMessage: {
     alignSelf: "flex-start",
-    backgroundColor: "#373E4E",
+    backgroundColor: "#373e4e",
     borderTopLeftRadius: 0,
+    color: "#828690",
   },
-  messageText: { fontSize: moderateScale(16), color: "#fff" },
+  messageText: { fontSize: moderateScale(12), color: "#fff" },
   timeText: {
-    fontSize: moderateScale(10),
+    fontSize: moderateScale(8),
     color: "#888",
     textAlign: "right",
-    marginTop: 4,
+    marginTop: 6,
+  },
+  timeTextImg: {
+    position: "absolute",
+    bottom: 5,
+    right: 5,
+    color: "#fff",
+  },
+  image: {
+    width: 200,
+    height: 200,
+    // borderRadius: moderateScale(10),
   },
   inputContainer: {
     flexDirection: "row",
     padding: scale(10),
-    backgroundColor: "#f0f0f0",
     alignItems: "center",
   },
   input: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#212632",
+    color: "#ffffff",
     borderRadius: moderateScale(25),
     paddingHorizontal: scale(15),
     paddingVertical: verticalScale(10),
-    marginRight: scale(10),
+    marginRight: scale(5),
     maxHeight: 100,
   },
+  button: {
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
   sendBtn: {
-    backgroundColor: "#05aa82",
+    backgroundColor: "#837dff",
     width: 45,
     height: 45,
     borderRadius: 22.5,

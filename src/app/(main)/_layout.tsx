@@ -9,6 +9,7 @@ export default function Layout() {
         headerStyle: {
           backgroundColor: "#292F3F",
         },
+        headerShadowVisible: false,
         headerTintColor: "#fff",
         headerTitleStyle: {
           fontWeight: "bold",
@@ -18,7 +19,7 @@ export default function Layout() {
       <Stack.Screen
         name="index"
         options={{
-          title: "WhatsApp",
+          title: "Chap App",
           headerRight: () => (
             <TouchableOpacity
               style={{ paddingTop: 5 }}

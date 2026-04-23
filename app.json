@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "whatsApp",
-    "slug": "WhatsApp",
+    "name": "Chat app",
+    "slug": "Chat app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/images/icon.png",
-    "scheme": "whatsapp",
+    "scheme": "Chat app",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {

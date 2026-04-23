@@ -21,6 +21,7 @@ const Signup = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const capitalizedName = name.charAt(0).toUpperCase() + name.slice(1);
 
   const handleSignup = async () => {
     if (!email || !password || !name) {
@@ -35,7 +36,7 @@ const Signup = () => {
       password: password,
       options: {
         data: {
-          full_name: name,
+          full_name: capitalizedName,
         },
       },
     });
