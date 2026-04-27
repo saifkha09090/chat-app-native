@@ -67,8 +67,8 @@ const ChatList = () => {
         user2,
         deleted_by_user1,
         deleted_by_user2,
-        user1_profile:profiles!conversations_user1_fkey (full_name, avatar_url),
-        user2_profile:profiles!conversations_user2_fkey (full_name, avatar_url)
+        user1_profile:profiles!conversations_user1_fkey (*),
+        user2_profile:profiles!conversations_user2_fkey (*)
       `,
       )
       .or(`user1.eq.${userId},user2.eq.${userId}`);
@@ -229,6 +229,7 @@ const ChatList = () => {
 
           return (
             <TouchableOpacity
+              activeOpacity={0.8}
               style={styles.chatItem}
               onPress={() =>
                 router.push({
@@ -236,19 +237,36 @@ const ChatList = () => {
                   params: {
                     name: user?.full_name || "User",
                     receiverId,
+                    avatar: user?.avatar_url,
+                    email: user?.email || "Email",
                   },
                 })
               }
             >
-              <Image
-                source={{
-                  uri:
-                    item.user1 === currentUserId
-                      ? item.user2_profile.avatar_url
-                      : item.user1_profile.avatar_url,
-                }}
-                style={styles.avatar}
-              />
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(main)/imageView",
+                    params: {
+                      uri:
+                        item.user1 === currentUserId
+                          ? item.user2_profile.avatar_url
+                          : item.user1_profile.avatar_url,
+                    },
+                  })
+                }
+              >
+                <Image
+                  source={{
+                    uri:
+                      item.user1 === currentUserId
+                        ? item.user2_profile.avatar_url
+                        : item.user1_profile.avatar_url,
+                  }}
+                  style={styles.avatar}
+                />
+              </TouchableOpacity>
 
               <View style={styles.chatInfo}>
                 <View style={styles.rowTop}>
@@ -258,7 +276,11 @@ const ChatList = () => {
                   </Text>
                 </View>
 
-                <Text style={styles.message} numberOfLines={1}>
+                <Text
+                  style={styles.message}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
                   {item.lastMessage}
                 </Text>
               </View>
@@ -278,13 +300,13 @@ const ChatList = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#292F3F" },
+  container: { flex: 1, backgroundColor: "#111B21" },
 
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#212632",
-    borderRadius: 10,
+    borderRadius: 15,
     margin: scale(10),
     paddingHorizontal: 10,
   },
@@ -340,6 +362,7 @@ const styles = StyleSheet.create({
 
   message: {
     marginTop: 3,
+    width: "80%",
     color: "#7a8191",
     fontSize: 10,
     fontWeight: "400",
@@ -348,7 +371,7 @@ const styles = StyleSheet.create({
   fab: {
     position: "absolute",
     bottom: 30,
-    right: 20,
+    right: 15,
     backgroundColor: "#0495d3",
     width: 60,
     height: 60,

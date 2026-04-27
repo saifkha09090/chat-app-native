@@ -47,7 +47,7 @@ const TermsAgree = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#292F3F",
+    backgroundColor: "#111B21",
     alignItems: "center",
     justifyContent: "space-between",
     paddingVertical: verticalScale(50),

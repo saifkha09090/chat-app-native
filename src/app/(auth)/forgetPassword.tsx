@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: verticalScale(40),
     paddingHorizontal: scale(30),
-    backgroundColor: "#292F3F",
+    backgroundColor: "#111B21",
   },
   header: {
     width: "100%",

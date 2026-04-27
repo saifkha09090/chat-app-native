@@ -20,6 +20,7 @@ const RootLayout = () => {
     splashScreen.hideAsync();
     getUser();
   }, []);
+
   return (
     <>
       <Stack screenOptions={{ headerShown: false }} />

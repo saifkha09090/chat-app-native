@@ -1,7 +1,6 @@
 import { supabase } from "@/src/utils/supabase/supabase";
-import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -144,32 +143,44 @@ const ChatScreen = () => {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: "images",
         allowsEditing: false,
-        allowsMultipleSelection: false,
-        quality: 0.8,
+        quality: 1,
       });
 
       if (result.canceled) return;
 
       const asset = result.assets[0];
+
       setUploading(true);
 
-      const ext =
-        asset.fileName?.split(".").pop()?.toLowerCase() ||
-        asset.uri.split(".").pop()?.toLowerCase() ||
-        "jpg";
+      const uri = asset.uri;
+
+      const fileNameFromUri = uri.split("/").pop() || `file_${Date.now()}`;
+      const ext = fileNameFromUri.split(".").pop()?.toLowerCase() || "jpg";
+
+      let mimeType = asset.mimeType;
+
+      if (!mimeType) {
+        if (ext === "gif") mimeType = "image/gif";
+        else if (ext === "png") mimeType = "image/png";
+        else mimeType = "image/jpeg";
+      }
 
       const fileName = `${currentUserId ?? "anonymous"}/${Date.now()}.${ext}`;
 
-      const file = new File(asset.uri);
-      const bytes = await file.bytes();
+      const response = await fetch(asset.uri);
+      const arrayBuffer = await response.arrayBuffer();
 
       const { error: uploadError } = await supabase.storage
         .from("images")
-        .upload(fileName, bytes, {
-          contentType: asset.mimeType ?? `image/${ext}`,
+        .upload(fileName, arrayBuffer, {
+          contentType: mimeType,
+          upsert: false,
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.log("Upload error:", uploadError);
+        throw uploadError;
+      }
 
       const { data } = supabase.storage.from("images").getPublicUrl(fileName);
 
@@ -188,10 +199,11 @@ const ChatScreen = () => {
         console.log("Message insert error:", msgError);
       }
     } catch (error) {
-      console.error("Error uploading image:", error);
-      const message =
-        error instanceof Error ? error.message : "Something went wrong";
-      Alert.alert("Error", message);
+      console.error("Upload error:", error);
+      Alert.alert(
+        "Error",
+        error instanceof Error ? error.message : "Something went wrong",
+      );
     } finally {
       setUploading(false);
     }
@@ -209,7 +221,17 @@ const ChatScreen = () => {
               isMe ? styles.myMessage : styles.otherMessage,
             ]}
           >
-            <Image source={{ uri: item.image }} style={styles.image} />
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() =>
+                router.push({
+                  pathname: "/(main)/imageView",
+                  params: { uri: item.image },
+                })
+              }
+            >
+              <Image source={{ uri: item.image }} style={styles.image} />
+            </TouchableOpacity>
             <Text style={styles.timeTextImg}>
               {new Date(item.created_at).toLocaleTimeString([], {
                 hour: "2-digit",
@@ -238,21 +260,24 @@ const ChatScreen = () => {
   };
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
-      <Stack.Screen
-        options={{ title: name as string, headerBackTitleStyle: styles.stack }}
-      />
-      <FlatList
-        data={messages}
-        renderItem={renderMessage}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listPadding}
-        inverted
-      />
-
       <KeyboardAvoidingView
+        style={{ flex: 1 }}
         behavior={"padding"}
         keyboardVerticalOffset={verticalScale(70)}
       >
+        <Stack.Screen
+          options={{
+            title: name as string,
+          }}
+        />
+        <FlatList
+          data={messages}
+          renderItem={renderMessage}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listPadding}
+          inverted
+        />
+
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
@@ -293,11 +318,8 @@ const ChatScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#292F3F",
+    backgroundColor: "#111B21",
     fontFamily: "System",
-  },
-  stack: {
-    textTransform: "capitalize",
   },
   listPadding: { paddingHorizontal: scale(10), paddingBottom: scale(10) },
   messageBubble: {
@@ -322,15 +344,13 @@ const styles = StyleSheet.create({
   },
   myMessage: {
     alignSelf: "flex-end",
-    backgroundColor: "#272a35",
+    backgroundColor: "#2c3449",
     borderTopRightRadius: 0,
-    color: "#5d5f68",
   },
   otherMessage: {
     alignSelf: "flex-start",
-    backgroundColor: "#373e4e",
+    backgroundColor: "#343842",
     borderTopLeftRadius: 0,
-    color: "#828690",
   },
   messageText: { fontSize: moderateScale(12), color: "#fff" },
   timeText: {
@@ -348,7 +368,6 @@ const styles = StyleSheet.create({
   image: {
     width: 200,
     height: 200,
-    // borderRadius: moderateScale(10),
   },
   inputContainer: {
     flexDirection: "row",

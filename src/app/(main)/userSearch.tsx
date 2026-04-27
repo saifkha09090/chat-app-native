@@ -85,7 +85,7 @@ const UserSearch = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#292F3F", padding: scale(10) },
+  container: { flex: 1, backgroundColor: "#111B21", padding: scale(10) },
 
   searchBar: {
     flexDirection: "row",

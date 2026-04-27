@@ -23,21 +23,48 @@ const profile = () => {
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    const getUser = async () => {
+    let channel: any;
+
+    const getUserAndSubscribe = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+
       setUserInfo(user);
+
       const { data } = await supabase
         .from("profiles")
         .select("avatar_url")
         .eq("id", user?.id)
         .single();
+
       setProfileImg(data?.avatar_url);
+
+      channel = supabase
+        .channel("profile-changes")
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "profiles",
+            filter: `id=eq.${user?.id}`,
+          },
+          (payload) => {
+            setProfileImg(payload.new.avatar_url);
+          },
+        )
+        .subscribe();
     };
 
-    getUser();
-  }, [profileImg]);
+    getUserAndSubscribe();
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, []);
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -120,13 +147,21 @@ const profile = () => {
   return (
     <View style={styles.container}>
       <View style={styles.addImg}>
-        <Image
-          resizeMode="cover"
-          source={{
-            uri: profileImg,
-          }}
-          style={styles.profileImg}
-        />
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() =>
+            router.push({
+              pathname: "/(main)/imageView",
+              params: { uri: profileImg },
+            })
+          }
+        >
+          <Image
+            resizeMode="cover"
+            source={{ uri: profileImg }}
+            style={styles.profileImg}
+          />
+        </TouchableOpacity>
         <TouchableOpacity
           activeOpacity={0.8}
           style={styles.profileChange}
@@ -162,7 +197,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     flex: 1,
     gap: verticalScale(20),
-    backgroundColor: "#292F3F",
+    backgroundColor: "#111B21",
   },
   addImg: {
     position: "relative",
@@ -173,7 +208,7 @@ const styles = StyleSheet.create({
     borderRadius: 200,
   },
   profileChange: {
-    backgroundColor: "#292f3ffa",
+    backgroundColor: "#2e3a5afa",
     position: "absolute",
     bottom: 5,
     right: 5,
