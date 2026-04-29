@@ -1,31 +1,35 @@
+import { DarkTheme, ThemeProvider } from "@react-navigation/native";
 import { Redirect, Stack } from "expo-router";
-import * as splashScreen from "expo-splash-screen";
+import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
+import Toast from "react-native-toast-message";
 import { supabase } from "../utils/supabase/supabase";
 
-splashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync();
+
 const RootLayout = () => {
   const [isLogin, setIsLogin] = useState(false);
 
   const getUser = async () => {
-    const user = await supabase.auth.getUser();
-    if (user.data.user) {
+    const { data } = await supabase.auth.getUser();
+    if (data.user) {
       setIsLogin(true);
     } else {
       setIsLogin(false);
     }
+    await SplashScreen.hideAsync();
   };
 
   useEffect(() => {
-    splashScreen.hideAsync();
     getUser();
   }, []);
 
   return (
-    <>
+    <ThemeProvider value={DarkTheme}>
       <Stack screenOptions={{ headerShown: false }} />
-      {isLogin ? <Redirect href={"/(main)"} /> : <Redirect href={"/(auth)"} />}
-    </>
+      {isLogin ? <Redirect href="/(main)" /> : <Redirect href="/(auth)" />}
+      <Toast />
+    </ThemeProvider>
   );
 };
 

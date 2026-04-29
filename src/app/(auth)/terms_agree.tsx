@@ -33,7 +33,7 @@ const TermsAgree = () => {
           <ButtonComp
             title="AGREE AND CONTINUE"
             onPress={onPress}
-            style={{ backgroundColor: "#03A9F1" }}
+            style={{ backgroundColor: "#046350" }}
           />
         </View>
       </View>
@@ -47,7 +47,7 @@ const TermsAgree = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#111B21",
+    backgroundColor: "#000",
     alignItems: "center",
     justifyContent: "space-between",
     paddingVertical: verticalScale(50),
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   link_text: {
-    color: "#6490ff",
+    color: "#017a62",
   },
 });
 

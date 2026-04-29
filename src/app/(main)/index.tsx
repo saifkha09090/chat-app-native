@@ -4,12 +4,14 @@ import React, { useEffect, useState } from "react";
 import {
   FlatList,
   Image,
+  Keyboard,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale } from "react-native-size-matters";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
@@ -18,6 +20,22 @@ const ChatList = () => {
   const [filteredChats, setFilteredChats] = useState<any[]>([]);
   const [searchText, setSearchText] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     let msgChannel: any;
@@ -65,8 +83,6 @@ const ChatList = () => {
         created_at,
         user1,
         user2,
-        deleted_by_user1,
-        deleted_by_user2,
         user1_profile:profiles!conversations_user1_fkey (*),
         user2_profile:profiles!conversations_user2_fkey (*)
       `,
@@ -74,8 +90,6 @@ const ChatList = () => {
       .or(`user1.eq.${userId},user2.eq.${userId}`);
 
     const filtered = (data || []).filter((chat) => {
-      if (chat.user1 === userId && chat.deleted_by_user1) return false;
-      if (chat.user2 === userId && chat.deleted_by_user2) return false;
       return true;
     });
 
@@ -83,7 +97,7 @@ const ChatList = () => {
       filtered.map(async (chat) => {
         const { data: lastMsg } = await supabase
           .from("messages")
-          .select("text, created_at")
+          .select("text, image, created_at")
           .eq("conversation_id", chat.id)
           .order("created_at", { ascending: false })
           .limit(1)
@@ -91,14 +105,17 @@ const ChatList = () => {
 
         return {
           ...chat,
-          lastMessage: lastMsg?.text || "sent a image",
+          lastMessage: lastMsg?.text
+            ? lastMsg?.text
+            : lastMsg?.image
+              ? "send a image"
+              : "No message",
           lastMessageTime: lastMsg?.created_at || chat.created_at,
         };
       }),
     );
 
     const sorted = sortChats(withMessages);
-
     setRecentChats(sorted);
     setFilteredChats(sorted);
   };
@@ -207,7 +224,10 @@ const ChatList = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView
+      style={[styles.container, { marginBottom: keyboardHeight }]}
+      edges={[]}
+    >
       <View style={styles.searchBar}>
         <MaterialIcons name="search" size={24} color="#666" />
         <TextInput
@@ -222,6 +242,7 @@ const ChatList = () => {
       <FlatList
         data={filteredChats}
         keyExtractor={(item) => item.id}
+        keyboardShouldPersistTaps="handled"
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         renderItem={({ item }) => {
           const user = getOtherUser(item);
@@ -231,7 +252,11 @@ const ChatList = () => {
             <TouchableOpacity
               activeOpacity={0.8}
               style={styles.chatItem}
-              onPress={() =>
+              onPress={() => {
+                setSearchText("");
+                if (searchText.trim() === "") {
+                  setFilteredChats(recentChats);
+                }
                 router.push({
                   pathname: "/(main)/chatScreen",
                   params: {
@@ -240,8 +265,8 @@ const ChatList = () => {
                     avatar: user?.avatar_url,
                     email: user?.email || "Email",
                   },
-                })
-              }
+                });
+              }}
             >
               <TouchableOpacity
                 activeOpacity={0.9}
@@ -288,24 +313,23 @@ const ChatList = () => {
           );
         }}
       />
-
       <TouchableOpacity
         style={styles.fab}
         onPress={() => router.push("/(main)/userSearch")}
       >
         <MaterialIcons name="add-comment" size={28} color="#fff" />
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#111B21" },
+  container: { flex: 1, backgroundColor: "#000" },
 
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#212632",
+    backgroundColor: "#252729",
     borderRadius: 15,
     margin: scale(10),
     paddingHorizontal: 10,
@@ -326,9 +350,7 @@ const styles = StyleSheet.create({
 
   separator: {
     height: 1,
-    backgroundColor: "#3b4252",
-    marginLeft: 10,
-    marginRight: 10,
+    backgroundColor: "#181818",
   },
 
   avatar: {
@@ -370,9 +392,9 @@ const styles = StyleSheet.create({
 
   fab: {
     position: "absolute",
-    bottom: 30,
+    bottom: 10,
     right: 15,
-    backgroundColor: "#0495d3",
+    backgroundColor: "#005d4b",
     width: 60,
     height: 60,
     borderRadius: 30,

@@ -1,21 +1,24 @@
+import ImagePickerModal from "@/src/components/modal/ImagePickerModal";
 import { supabase } from "@/src/utils/supabase/supabase";
+import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
-  Image,
-  KeyboardAvoidingView,
+  ImageBackground,
+  Keyboard,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
+import Toast from "react-native-toast-message";
 import FontAwesome from "react-native-vector-icons/FontAwesome";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
@@ -27,10 +30,27 @@ const ChatScreen = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
     init();
   }, [receiverId]);
+
+  useEffect(() => {
+    const showKey = Keyboard.addListener("keyboardDidShow", (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+
+    const hideKey = Keyboard.addListener("keyboardDidHide", () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showKey.remove();
+      hideKey.remove();
+    };
+  }, []);
 
   const init = async () => {
     const {
@@ -41,32 +61,21 @@ const ChatScreen = () => {
 
     setCurrentUserId(user.id);
 
-    const conv = await getOrCreateConversation(user.id, receiverId as string);
+    const userA = user.id < receiverId ? user.id : receiverId;
+    const userB = user.id < receiverId ? receiverId : user.id;
 
-    setConversationId(conv.id);
-  };
+    const [convResult, messagesResult] = await Promise.all([
+      supabase
+        .from("conversations")
+        .select("*")
+        .eq("user1", userA)
+        .eq("user2", userB)
+        .maybeSingle(),
 
-  useEffect(() => {
-    if (conversationId) {
-      fetchMessages();
-      const unsubscribe = subscribeToMessages();
+      null,
+    ]);
 
-      return () => {
-        unsubscribe?.();
-      };
-    }
-  }, [conversationId]);
-
-  const getOrCreateConversation = async (userId: string, receiver: string) => {
-    const userA = userId < receiver ? userId : receiver;
-    const userB = userId < receiver ? receiver : userId;
-
-    let { data: conv } = await supabase
-      .from("conversations")
-      .select("*")
-      .eq("user1", userA)
-      .eq("user2", userB)
-      .maybeSingle();
+    let conv = convResult.data;
 
     if (!conv) {
       const { data: newConv } = await supabase
@@ -78,17 +87,28 @@ const ChatScreen = () => {
       conv = newConv;
     }
 
-    return conv;
+    setConversationId(conv.id);
+    fetchMessages(conv.id);
   };
 
-  const fetchMessages = async () => {
+  useEffect(() => {
     if (!conversationId) return;
 
+    fetchMessages(conversationId);
+    const unsubscribe = subscribeToMessages();
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, [conversationId]);
+
+  const fetchMessages = async (convId: any) => {
     const { data } = await supabase
       .from("messages")
       .select("*")
-      .eq("conversation_id", conversationId)
-      .order("created_at", { ascending: false });
+      .eq("conversation_id", convId)
+      .order("created_at", { ascending: false })
+      .limit(50);
 
     if (data) setMessages(data);
   };
@@ -119,7 +139,6 @@ const ChatScreen = () => {
       {
         text: inputText,
         sender_id: currentUserId,
-        receiver_id: receiverId,
         conversation_id: conversationId,
       },
     ]);
@@ -127,24 +146,47 @@ const ChatScreen = () => {
     if (!error) setInputText("");
   };
 
-  const handlePickAndUpload = async () => {
+  const handlePickAndUpload = async (useCamera = false) => {
     try {
-      const { status } =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (useCamera) {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
 
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission required",
-          "Please allow access to upload images.",
-        );
-        return;
+        if (status !== "granted") {
+          Toast.show({
+            type: "error",
+            text1: "Camera permission required",
+            text2: "Please allow camera access.",
+            position: "top",
+            visibilityTime: 2000,
+          });
+          return;
+        }
+      } else {
+        const { status } =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+        if (status !== "granted") {
+          Toast.show({
+            type: "error",
+            text1: "Permission required",
+            text2: "Please allow gallery access.",
+            position: "top",
+            visibilityTime: 2000,
+          });
+          return;
+        }
       }
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: "images",
-        allowsEditing: false,
-        quality: 1,
-      });
+      const result = useCamera
+        ? await ImagePicker.launchCameraAsync({
+            mediaTypes: "images",
+            quality: 0.8,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: "images",
+            allowsEditing: false,
+            quality: 0.8,
+          });
 
       if (result.canceled) return;
 
@@ -190,7 +232,6 @@ const ChatScreen = () => {
         {
           image: publicUrl,
           sender_id: currentUserId,
-          receiver_id: receiverId,
           conversation_id: conversationId,
         },
       ]);
@@ -200,15 +241,21 @@ const ChatScreen = () => {
       }
     } catch (error) {
       console.error("Upload error:", error);
-      Alert.alert(
-        "Error",
-        error instanceof Error ? error.message : "Something went wrong",
-      );
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: error instanceof Error ? error.message : "Something went wrong",
+        position: "top",
+        visibilityTime: 2000,
+      });
     } finally {
       setUploading(false);
     }
   };
 
+  const handleImageOption = () => {
+    setModalVisible(true);
+  };
   const renderMessage = ({ item }: { item: any }) => {
     const isMe = item.sender_id === currentUserId;
 
@@ -259,58 +306,74 @@ const ChatScreen = () => {
     );
   };
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
-      <KeyboardAvoidingView
+    <SafeAreaView style={{ flex: 1 }} edges={["bottom"]}>
+      <Stack.Screen
+        options={{
+          title: name as string,
+        }}
+      />
+      <ImageBackground
         style={{ flex: 1 }}
-        behavior={"padding"}
-        keyboardVerticalOffset={verticalScale(70)}
+        source={{
+          uri: "https://i.pinimg.com/564x/d3/6b/cc/d36bcceceaa1d390489ec70d93154311.jpg",
+        }}
+        resizeMode="cover"
       >
-        <Stack.Screen
-          options={{
-            title: name as string,
-          }}
-        />
-        <FlatList
-          data={messages}
-          renderItem={renderMessage}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listPadding}
-          inverted
-        />
-
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            value={inputText}
-            onChangeText={setInputText}
-            placeholder="Type message..."
-            placeholderTextColor="#96979d"
+        <View style={styles.overlay}>
+          <FlatList
+            data={messages}
+            renderItem={renderMessage}
+            keyboardShouldPersistTaps="handled"
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listPadding}
+            inverted
           />
-          <TouchableOpacity
-            style={styles.button}
-            activeOpacity={0.85}
-            onPress={handlePickAndUpload}
-            disabled={uploading}
-          >
-            {uploading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <FontAwesome name="camera" size={24} color="#fff" />
-            )}
-          </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[
-              styles.sendBtn,
-              { opacity: inputText.length > 0 ? 1 : 0.6 },
-            ]}
-            disabled={inputText.length === 0}
-            onPress={sendMessage}
+          <View
+            style={[styles.inputContainer, { marginBottom: keyboardHeight }]}
           >
-            <MaterialIcons name="send" size={24} color="#fff" />
-          </TouchableOpacity>
+            <TextInput
+              style={styles.input}
+              value={inputText}
+              onChangeText={setInputText}
+              placeholder="Type message..."
+              placeholderTextColor="#96979d"
+            />
+            <TouchableOpacity
+              style={styles.button}
+              activeOpacity={0.85}
+              onPress={handleImageOption}
+              disabled={uploading}
+            >
+              {uploading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <FontAwesome name="camera" size={24} color="#fff" />
+              )}
+            </TouchableOpacity>
+
+            <ImagePickerModal
+              visible={modalVisible}
+              onClose={() => setModalVisible(false)}
+              onPick={(isCamera: any) => {
+                setModalVisible(false);
+                handlePickAndUpload(isCamera);
+              }}
+            />
+
+            <TouchableOpacity
+              style={[
+                styles.sendBtn,
+                { opacity: inputText.length > 0 ? 1 : 0.6 },
+              ]}
+              disabled={inputText.length === 0}
+              onPress={sendMessage}
+            >
+              <MaterialIcons name="send" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
-      </KeyboardAvoidingView>
+      </ImageBackground>
     </SafeAreaView>
   );
 };
@@ -318,7 +381,7 @@ const ChatScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#111B21",
+    backgroundColor: "#000",
     fontFamily: "System",
   },
   listPadding: { paddingHorizontal: scale(10), paddingBottom: scale(10) },
@@ -333,7 +396,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 1,
   },
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.37)",
+  },
   messageBubbleImg: {
+    padding: moderateScale(4),
+    borderRadius: moderateScale(10),
     marginVertical: verticalScale(5),
     maxWidth: "80%",
     position: "relative",
@@ -344,12 +413,12 @@ const styles = StyleSheet.create({
   },
   myMessage: {
     alignSelf: "flex-end",
-    backgroundColor: "#2c3449",
+    backgroundColor: "#00493b",
     borderTopRightRadius: 0,
   },
   otherMessage: {
     alignSelf: "flex-start",
-    backgroundColor: "#343842",
+    backgroundColor: "#252729",
     borderTopLeftRadius: 0,
   },
   messageText: { fontSize: moderateScale(12), color: "#fff" },
@@ -361,13 +430,15 @@ const styles = StyleSheet.create({
   },
   timeTextImg: {
     position: "absolute",
+    fontSize: 8,
     bottom: 5,
-    right: 5,
+    right: 8,
     color: "#fff",
   },
   image: {
     width: 200,
     height: 200,
+    borderRadius: moderateScale(10),
   },
   inputContainer: {
     flexDirection: "row",
@@ -376,7 +447,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    backgroundColor: "#212632",
+    backgroundColor: "#252729",
     color: "#ffffff",
     borderRadius: moderateScale(25),
     paddingHorizontal: scale(15),
@@ -397,7 +468,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   sendBtn: {
-    backgroundColor: "#837dff",
+    backgroundColor: "#005d4b",
     width: 45,
     height: 45,
     borderRadius: 22.5,

@@ -4,12 +4,11 @@ import React, { useState } from "react";
 import {
   FlatList,
   Image,
-  KeyboardAvoidingView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { moderateScale, scale } from "react-native-size-matters";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
@@ -25,7 +24,7 @@ const UserSearch = () => {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (text.length > 0) {
+    if (text.length > 3) {
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
@@ -39,7 +38,7 @@ const UserSearch = () => {
   };
 
   return (
-    <KeyboardAvoidingView behavior="padding" style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.searchBar}>
         <MaterialIcons name="search" size={24} color="#666" />
         <TextInput
@@ -55,16 +54,23 @@ const UserSearch = () => {
       <FlatList
         data={users}
         keyExtractor={(item) => item.id}
+        keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => (
           <TouchableOpacity
             activeOpacity={0.8}
             style={styles.userCard}
-            onPress={() =>
+            onPress={() => {
               router.push({
                 pathname: "/(main)/chatScreen",
-                params: { name: item.full_name, receiverId: item.id },
-              })
-            }
+                params: {
+                  name: item.full_name,
+                  receiverId: item.id,
+                  avatar: item.avatar_url,
+                  email: item.email,
+                },
+              });
+              setSearchEmail("");
+            }}
           >
             <Image
               source={{
@@ -80,17 +86,17 @@ const UserSearch = () => {
           </TouchableOpacity>
         )}
       />
-    </KeyboardAvoidingView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#111B21", padding: scale(10) },
+  container: { flex: 1, backgroundColor: "#000", padding: scale(10) },
 
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#212632",
+    backgroundColor: "#252729",
     borderRadius: 10,
     paddingHorizontal: 10,
   },

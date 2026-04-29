@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -22,18 +22,22 @@ const OtherUserProfile = () => {
       </View>
 
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.actionBtn}>
-          <Ionicons name="chatbubble" size={22} color="#29b8f5" />
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={styles.actionBtn}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="chatbubble" size={22} color="#019b7c" />
           <Text style={styles.actionText}>Message</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionBtn}>
-          <Ionicons name="call" size={22} color="#29b8f5" />
+        <TouchableOpacity activeOpacity={0.8} style={styles.actionBtn}>
+          <Ionicons name="call" size={22} color="#019b7c" />
           <Text style={styles.actionText}>Call</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionBtn}>
-          <Ionicons name="videocam" size={22} color="#29b8f5" />
+        <TouchableOpacity activeOpacity={0.8} style={styles.actionBtn}>
+          <Ionicons name="videocam" size={22} color="#019b7c" />
           <Text style={styles.actionText}>Video</Text>
         </TouchableOpacity>
       </View>
@@ -53,7 +57,7 @@ export default OtherUserProfile;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#111B21",
+    backgroundColor: "#000",
     alignItems: "center",
   },
 
@@ -95,7 +99,7 @@ const styles = StyleSheet.create({
   },
 
   actionText: {
-    color: "#29b8f5",
+    color: "#019b7c",
     fontSize: 12,
     marginTop: 4,
   },
@@ -109,7 +113,7 @@ const styles = StyleSheet.create({
   },
 
   infoTitle: {
-    color: "#29b8f5",
+    color: "#019b7c",
     fontWeight: "bold",
     marginBottom: 5,
   },

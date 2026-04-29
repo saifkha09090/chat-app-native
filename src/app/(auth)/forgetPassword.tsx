@@ -4,7 +4,6 @@ import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   StyleSheet,
   Text,
@@ -14,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
+import Toast from "react-native-toast-message";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
 const ForgotPassword = () => {
@@ -22,7 +22,14 @@ const ForgotPassword = () => {
 
   const handleResetPassword = async () => {
     if (!email) {
-      Alert.alert("Error", "Please enter your email.");
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Please enter your email.",
+        position: "bottom",
+        keyboardOffset: 100,
+        visibilityTime: 2000,
+      });
       return;
     }
 
@@ -35,13 +42,24 @@ const ForgotPassword = () => {
     setLoading(false);
 
     if (error) {
-      Alert.alert("Error", error.message);
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: error.message,
+        position: "bottom",
+        keyboardOffset: 100,
+        visibilityTime: 2000,
+      });
     } else {
-      Alert.alert(
-        "Success",
-        "Password reset email has been sent. Please check your inbox.",
-      );
-      router.back();
+      Toast.show({
+        type: "success",
+        text1: "Password reset email has been sent. Please check your inbox.",
+        position: "top",
+        visibilityTime: 2000,
+        onHide() {
+          router.back();
+        },
+      });
     }
   };
 
@@ -58,7 +76,7 @@ const ForgotPassword = () => {
 
         <View style={styles.input_main_container}>
           <View style={styles.input_wrapper}>
-            <MaterialIcons name="email" size={20} color="#29b8f5" />
+            <MaterialIcons name="email" size={20} color="#017a62" />
             <TextInput
               style={styles.input}
               placeholder="Email Address"
@@ -79,12 +97,12 @@ const ForgotPassword = () => {
         style={styles.footer}
       >
         {loading ? (
-          <ActivityIndicator size="large" color="#29b8f5" />
+          <ActivityIndicator size="large" color="#017a62" />
         ) : (
           <ButtonComp
             title="Send Reset Link"
             onPress={handleResetPassword}
-            style={{ width: scale(250), backgroundColor: "#03A9F1" }}
+            style={{ width: scale(250), backgroundColor: "#046350" }}
           />
         )}
 
@@ -110,7 +128,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: verticalScale(40),
     paddingHorizontal: scale(30),
-    backgroundColor: "#111B21",
+    backgroundColor: "#000",
   },
   header: {
     width: "100%",
@@ -147,10 +165,10 @@ const styles = StyleSheet.create({
   horizontal_line: {
     width: "100%",
     height: verticalScale(1),
-    backgroundColor: "#29b8f5",
+    backgroundColor: "#017a62",
   },
   link_description: {
-    color: "#29b8f5",
+    color: "#017a62",
     fontWeight: "bold",
   },
   footer: {

@@ -4,7 +4,6 @@ import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   StyleSheet,
   Text,
@@ -14,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
+import Toast from "react-native-toast-message";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
 const Signup = () => {
@@ -25,7 +25,13 @@ const Signup = () => {
 
   const handleSignup = async () => {
     if (!email || !password || !name) {
-      Alert.alert("Error", "Please fill all fields");
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Please fill all fields",
+        position: "top",
+        visibilityTime: 2000,
+      });
       return;
     }
 
@@ -44,11 +50,23 @@ const Signup = () => {
     setLoading(false);
 
     if (error) {
-      Alert.alert("Signup Failed", error.message);
+      Toast.show({
+        type: "error",
+        text1: "Signup Failed",
+        text2: error.message,
+        position: "top",
+        visibilityTime: 2000,
+      });
     } else {
-      Alert.alert("Success!", "Registration successful.", [
-        { text: "OK", onPress: () => router.push("/(auth)/login") },
-      ]);
+      Toast.show({
+        type: "success",
+        text1: "Signup successful.",
+        position: "top",
+        visibilityTime: 2000,
+        onHide() {
+          router.push("/(auth)/login");
+        },
+      });
     }
   };
 
@@ -65,7 +83,7 @@ const Signup = () => {
 
         <View style={styles.input_main_container}>
           <View style={styles.input_wrapper}>
-            <MaterialIcons name="person" size={20} color="#29b8f5" />
+            <MaterialIcons name="person" size={20} color="#017a62" />
             <TextInput
               style={styles.input}
               placeholder="Full Name"
@@ -79,7 +97,7 @@ const Signup = () => {
           <View
             style={[styles.input_wrapper, { marginTop: verticalScale(20) }]}
           >
-            <MaterialIcons name="email" size={20} color="#29b8f5" />
+            <MaterialIcons name="email" size={20} color="#017a62" />
             <TextInput
               style={styles.input}
               placeholder="Email Address"
@@ -95,7 +113,7 @@ const Signup = () => {
           <View
             style={[styles.input_wrapper, { marginTop: verticalScale(20) }]}
           >
-            <MaterialIcons name="lock" size={20} color="#29b8f5" />
+            <MaterialIcons name="lock" size={20} color="#017a62" />
             <TextInput
               style={styles.input}
               placeholder="Password"
@@ -115,12 +133,12 @@ const Signup = () => {
         style={styles.footer}
       >
         {loading ? (
-          <ActivityIndicator size="large" color="#29b8f5" />
+          <ActivityIndicator size="large" color="#017a62" />
         ) : (
           <ButtonComp
             title="Sign Up"
             onPress={handleSignup}
-            style={{ width: scale(250), backgroundColor: "#03A9F1" }}
+            style={{ width: scale(250), backgroundColor: "#046350" }}
           />
         )}
 
@@ -146,7 +164,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: verticalScale(40),
     paddingHorizontal: scale(30),
-    backgroundColor: "#111B21",
+    backgroundColor: "#000",
   },
   header: {
     width: "100%",
@@ -183,10 +201,10 @@ const styles = StyleSheet.create({
   horizontal_line: {
     width: "100%",
     height: verticalScale(1),
-    backgroundColor: "#29b8f5",
+    backgroundColor: "#017a62",
   },
   link_description: {
-    color: "#29b8f5",
+    color: "#017a62",
     fontWeight: "bold",
   },
   footer: {

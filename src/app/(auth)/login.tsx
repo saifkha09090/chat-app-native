@@ -1,11 +1,10 @@
 import ButtonComp from "@/src/components/btn/ButtonComp";
 import { supabase } from "@/src/utils/supabase/supabase";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
+  Keyboard,
   StyleSheet,
   Text,
   TextInput,
@@ -14,16 +13,38 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
+import Toast from "react-native-toast-message";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert("Error", "Please enter both email and password.");
+      Toast.show({
+        type: "error",
+        text1: "Please enter both email and password.",
+        position: "top",
+        visibilityTime: 2000,
+      });
       return;
     }
 
@@ -37,15 +58,26 @@ const Login = () => {
     setLoading(false);
 
     if (error) {
-      Alert.alert("Login Failed", error.message);
+      Toast.show({
+        type: "error",
+        text1: "Login Failed",
+        text2: error.message,
+        position: "top",
+        visibilityTime: 2000,
+      });
     } else {
-      console.log("User logged in:", data.user?.email);
+      Toast.show({
+        type: "success",
+        text1: "Login successful.",
+        position: "top",
+        visibilityTime: 2000,
+      });
       router.replace("/(main)");
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { marginBottom: keyboardHeight }]}>
       <View></View>
       <View style={styles.header}>
         <View style={styles.heading_container}>
@@ -57,7 +89,7 @@ const Login = () => {
 
         <View style={styles.input_main_container}>
           <View style={styles.input_wrapper}>
-            <MaterialIcons name="email" size={20} color="#29b8f5" />
+            <MaterialIcons name="email" size={20} color="#017a62" />
             <TextInput
               style={styles.input}
               placeholder="Email Address"
@@ -73,7 +105,7 @@ const Login = () => {
           <View
             style={[styles.input_wrapper, { marginTop: verticalScale(20) }]}
           >
-            <MaterialIcons name="lock" size={20} color="#29b8f5" />
+            <MaterialIcons name="lock" size={20} color="#017a62" />
             <TextInput
               style={styles.input}
               placeholder="Password"
@@ -94,19 +126,14 @@ const Login = () => {
           </TouchableOpacity>
         </View>
       </View>
-
-      <KeyboardAvoidingView
-        behavior="padding"
-        keyboardVerticalOffset={verticalScale(20)}
-        style={styles.footer}
-      >
+      <View>
         {loading ? (
-          <ActivityIndicator size="large" color="#29b8f5" />
+          <ActivityIndicator size="large" color="#017a62" />
         ) : (
           <ButtonComp
             title="Login"
             onPress={handleLogin}
-            style={{ width: scale(250), backgroundColor: "#03A9F1" }}
+            style={{ width: scale(250), backgroundColor: "#046350" }}
           />
         )}
 
@@ -120,7 +147,7 @@ const Login = () => {
             <Text style={styles.link_description}>Sign Up</Text>
           </Text>
         </TouchableOpacity>
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 };
@@ -132,7 +159,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: verticalScale(40),
     paddingHorizontal: scale(30),
-    backgroundColor: "#111B21",
+    backgroundColor: "#000",
   },
   header: {
     width: "100%",
@@ -169,10 +196,10 @@ const styles = StyleSheet.create({
   horizontal_line: {
     width: "100%",
     height: verticalScale(1),
-    backgroundColor: "#29b8f5",
+    backgroundColor: "#017a62",
   },
   link_description: {
-    color: "#29b8f5",
+    color: "#017a62",
     fontWeight: "bold",
   },
   forgot_pass: {

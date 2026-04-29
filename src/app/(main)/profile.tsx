@@ -1,4 +1,5 @@
 import ButtonComp from "@/src/components/btn/ButtonComp";
+import ImagePickerModal from "@/src/components/modal/ImagePickerModal";
 import { supabase } from "@/src/utils/supabase/supabase";
 import { User } from "@supabase/supabase-js";
 import { File } from "expo-file-system";
@@ -7,7 +8,6 @@ import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   StyleSheet,
   Text,
@@ -15,12 +15,14 @@ import {
   View,
 } from "react-native";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
+import Toast from "react-native-toast-message";
 import Ionicons from "react-native-vector-icons/Ionicons";
 
 const profile = () => {
   const [userInfo, setUserInfo] = useState<User | null>(null);
   const [profileImg, setProfileImg] = useState<any>();
   const [uploading, setUploading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
     let channel: any;
@@ -77,24 +79,47 @@ const profile = () => {
     }
   };
 
-  const handlePickAndUpload = async () => {
+  const handlePickAndUpload = async (useCamera = false) => {
     try {
-      const { status } =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (useCamera) {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
 
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission required",
-          "Please allow access to upload images.",
-        );
-        return;
+        if (status !== "granted") {
+          Toast.show({
+            type: "error",
+            text1: "Camera permission required",
+            text2: "Please allow camera access.",
+            position: "top",
+            visibilityTime: 2000,
+          });
+          return;
+        }
+      } else {
+        const { status } =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+        if (status !== "granted") {
+          Toast.show({
+            type: "error",
+            text1: "Permission required",
+            text2: "Please allow gallery access.",
+            position: "top",
+            visibilityTime: 2000,
+          });
+          return;
+        }
       }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: "images",
-        allowsEditing: false,
-        allowsMultipleSelection: false,
-        quality: 0.8,
-      });
+
+      const result = useCamera
+        ? await ImagePicker.launchCameraAsync({
+            mediaTypes: "images",
+            quality: 0.8,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: "images",
+            allowsEditing: false,
+            quality: 0.8,
+          });
 
       if (result.canceled) return;
 
@@ -123,27 +148,32 @@ const profile = () => {
 
       const publicUrl = data.publicUrl;
 
-      const { error: msgError } = await supabase
+      await supabase
         .from("profiles")
-        .update([
-          {
-            avatar_url: publicUrl,
-          },
-        ])
+        .update({ avatar_url: publicUrl })
         .eq("id", userInfo?.id);
-
-      if (msgError) {
-        console.log("Message insert error:", msgError);
-      }
     } catch (error) {
       console.error("Error uploading image:", error);
+
       const message =
         error instanceof Error ? error.message : "Something went wrong";
-      Alert.alert("Error", message);
+
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: message,
+        position: "top",
+        visibilityTime: 2000,
+      });
     } finally {
       setUploading(false);
     }
   };
+
+  const handleImageOption = () => {
+    setModalVisible(true);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.addImg}>
@@ -165,7 +195,7 @@ const profile = () => {
         <TouchableOpacity
           activeOpacity={0.8}
           style={styles.profileChange}
-          onPress={handlePickAndUpload}
+          onPress={handleImageOption}
           disabled={uploading}
         >
           {uploading ? (
@@ -174,6 +204,15 @@ const profile = () => {
             <Ionicons name="add" size={20} color="#fff" />
           )}
         </TouchableOpacity>
+
+        <ImagePickerModal
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          onPick={(isCamera: any) => {
+            setModalVisible(false);
+            handlePickAndUpload(isCamera);
+          }}
+        />
       </View>
       <View style={styles.text_container}>
         <Text style={styles.profile_text}>
@@ -197,7 +236,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     flex: 1,
     gap: verticalScale(20),
-    backgroundColor: "#111B21",
+    backgroundColor: "#000",
   },
   addImg: {
     position: "relative",

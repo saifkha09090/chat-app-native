@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingVertical: verticalScale(50),
-    backgroundColor: "#111B21",
+    backgroundColor: "#000",
   },
   header: {},
   body: {
