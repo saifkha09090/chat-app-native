@@ -1,7 +1,6 @@
 import ButtonComp from "@/src/components/btn/ButtonComp";
-import { supabase } from "@/src/utils/supabase/supabase";
+import useAuth from "@/src/hooks/useAuth";
 import { router } from "expo-router";
-import React, { useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -13,62 +12,19 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
-import Toast from "react-native-toast-message";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
 const Signup = () => {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const capitalizedName = name.charAt(0).toUpperCase() + name.slice(1);
-
-  const handleSignup = async () => {
-    if (!email || !password || !name) {
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "Please fill all fields",
-        position: "top",
-        visibilityTime: 2000,
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    const { data, error } = await supabase.auth.signUp({
-      email: email,
-      password: password,
-      options: {
-        data: {
-          full_name: capitalizedName,
-        },
-      },
-    });
-
-    setLoading(false);
-
-    if (error) {
-      Toast.show({
-        type: "error",
-        text1: "Signup Failed",
-        text2: error.message,
-        position: "top",
-        visibilityTime: 2000,
-      });
-    } else {
-      Toast.show({
-        type: "success",
-        text1: "Signup successful.",
-        position: "top",
-        visibilityTime: 2000,
-        onHide() {
-          router.push("/(auth)/login");
-        },
-      });
-    }
-  };
+  const {
+    handleSignup,
+    setEmail,
+    setName,
+    name,
+    email,
+    password,
+    setPassword,
+    loading,
+  } = useAuth();
 
   return (
     <SafeAreaView style={styles.container}>

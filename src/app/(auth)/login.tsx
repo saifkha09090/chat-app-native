@@ -1,5 +1,5 @@
 import ButtonComp from "@/src/components/btn/ButtonComp";
-import { supabase } from "@/src/utils/supabase/supabase";
+import useAuth from "@/src/hooks/useAuth";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -13,13 +13,12 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
-import Toast from "react-native-toast-message";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
 const Login = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  // const [email, setEmail] = useState("");
+  // const [password, setPassword] = useState("");
+  // const [loading, setLoading] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
@@ -37,44 +36,47 @@ const Login = () => {
     };
   }, []);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Toast.show({
-        type: "error",
-        text1: "Please enter both email and password.",
-        position: "top",
-        visibilityTime: 2000,
-      });
-      return;
-    }
+  const { setEmail, email, password, setPassword, handleLogin, loading } =
+    useAuth();
 
-    setLoading(true);
+  // const handleLogin = async () => {
+  //   if (!email || !password) {
+  //     Toast.show({
+  //       type: "error",
+  //       text1: "Please enter both email and password.",
+  //       position: "top",
+  //       visibilityTime: 2000,
+  //     });
+  //     return;
+  //   }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password,
-    });
+  //   setLoading(true);
 
-    setLoading(false);
+  //   const { data, error } = await supabase.auth.signInWithPassword({
+  //     email: email,
+  //     password: password,
+  //   });
 
-    if (error) {
-      Toast.show({
-        type: "error",
-        text1: "Login Failed",
-        text2: error.message,
-        position: "top",
-        visibilityTime: 2000,
-      });
-    } else {
-      Toast.show({
-        type: "success",
-        text1: "Login successful.",
-        position: "top",
-        visibilityTime: 2000,
-      });
-      router.replace("/(main)");
-    }
-  };
+  //   setLoading(false);
+
+  //   if (error) {
+  //     Toast.show({
+  //       type: "error",
+  //       text1: "Login Failed",
+  //       text2: error.message,
+  //       position: "top",
+  //       visibilityTime: 2000,
+  //     });
+  //   } else {
+  //     Toast.show({
+  //       type: "success",
+  //       text1: "Login successful.",
+  //       position: "top",
+  //       visibilityTime: 2000,
+  //     });
+  //     router.replace("/(main)");
+  //   }
+  // };
 
   return (
     <SafeAreaView style={[styles.container, { marginBottom: keyboardHeight }]}>

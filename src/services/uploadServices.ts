@@ -1,13 +1,19 @@
 import { supabase } from "@/src/utils/supabase/supabase";
 
 export const uploadImage = async (
+  uri: string,
   fileName: string,
-  buffer: ArrayBuffer,
-  type: string,
+  mimeType: string,
 ) => {
+  const response = await fetch(uri);
+  const arrayBuffer = await response.arrayBuffer();
+
   const { error } = await supabase.storage
     .from("images")
-    .upload(fileName, buffer, { contentType: type });
+    .upload(fileName, arrayBuffer, {
+      contentType: mimeType,
+      upsert: false,
+    });
 
   if (error) throw error;
 

@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/src/services/authServices";
 import { supabase } from "@/src/utils/supabase/supabase";
 import { router } from "expo-router";
 import React, { useState } from "react";
@@ -8,7 +9,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { moderateScale, scale } from "react-native-size-matters";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
@@ -20,9 +21,7 @@ const UserSearch = () => {
   const handleSearch = async (text: string) => {
     setSearchEmail(text);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getCurrentUser();
 
     if (text.length > 3) {
       const { data, error } = await supabase

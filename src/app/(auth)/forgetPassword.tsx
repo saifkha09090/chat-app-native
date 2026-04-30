@@ -1,7 +1,7 @@
 import ButtonComp from "@/src/components/btn/ButtonComp";
-import { supabase } from "@/src/utils/supabase/supabase";
+import useAuth from "@/src/hooks/useAuth";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -13,55 +13,56 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
-import Toast from "react-native-toast-message";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
 const ForgotPassword = () => {
-  const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
+  // const [email, setEmail] = useState("");
+  // const [loading, setLoading] = useState(false);
 
-  const handleResetPassword = async () => {
-    if (!email) {
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "Please enter your email.",
-        position: "bottom",
-        keyboardOffset: 100,
-        visibilityTime: 2000,
-      });
-      return;
-    }
+  // const handleResetPassword = async () => {
+  //   if (!email) {
+  //     Toast.show({
+  //       type: "error",
+  //       text1: "Error",
+  //       text2: "Please enter your email.",
+  //       position: "bottom",
+  //       keyboardOffset: 100,
+  //       visibilityTime: 2000,
+  //     });
+  //     return;
+  //   }
 
-    setLoading(true);
+  //   setLoading(true);
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: "expo://192.168.0.183:8081",
-    });
+  //   const { error } = await supabase.auth.resetPasswordForEmail(email, {
+  //     redirectTo: "expo://192.168.0.183:8081",
+  //   });
 
-    setLoading(false);
+  //   setLoading(false);
 
-    if (error) {
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: error.message,
-        position: "bottom",
-        keyboardOffset: 100,
-        visibilityTime: 2000,
-      });
-    } else {
-      Toast.show({
-        type: "success",
-        text1: "Password reset email has been sent. Please check your inbox.",
-        position: "top",
-        visibilityTime: 2000,
-        onHide() {
-          router.back();
-        },
-      });
-    }
-  };
+  //   if (error) {
+  //     Toast.show({
+  //       type: "error",
+  //       text1: "Error",
+  //       text2: error.message,
+  //       position: "bottom",
+  //       keyboardOffset: 100,
+  //       visibilityTime: 2000,
+  //     });
+  //   } else {
+  //     Toast.show({
+  //       type: "success",
+  //       text1: "Password reset email has been sent. Please check your inbox.",
+  //       position: "top",
+  //       visibilityTime: 2000,
+  //       onHide() {
+  //         router.back();
+  //       },
+  //     });
+  //   }
+  // };
+
+  const { email, handleResetPassword, loading, setEmail } = useAuth();
 
   return (
     <SafeAreaView style={styles.container}>

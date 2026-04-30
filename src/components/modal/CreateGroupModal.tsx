@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/src/services/authServices";
 import { supabase } from "@/src/utils/supabase/supabase";
 import { User } from "@supabase/supabase-js";
 import React, { useEffect, useState } from "react";
@@ -11,29 +12,39 @@ import {
   View,
 } from "react-native";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
+import Toast from "react-native-toast-message";
 
-const CreateGroupModal = ({ visible, onClose, onPick }: any) => {
+const CreateGroupModal = ({ visible, onClose }: any) => {
   const [groupName, setGroupName] = useState("");
   const [user, setUser] = useState<User | null>();
 
   useEffect(() => {
     const getUser = async () => {
-      const { data } = await supabase.auth.getUser();
-      setUser(data.user);
+      const user = await getCurrentUser();
+      setUser(user);
     };
-  });
+    getUser();
+  }, []);
 
   const handleCreateGroup = async () => {
     console.log(groupName);
-    const { error } = await supabase.from("conversations").insert({
-      name: groupName,
-      is_group: true,
-      created_by: user?.id,
-    });
-    if (error) {
-      console.log("create ", error);
+    if (groupName.trim() === "") {
+      Toast.show({
+        type: "error",
+        text1: "Group Name Required",
+      });
     } else {
-      console.log("group created");
+      const { error } = await supabase.from("conversations").insert({
+        name: groupName,
+        is_group: true,
+        created_by: user?.id,
+      });
+      if (error) {
+        console.log("create ", error);
+      } else {
+        console.log("group created");
+        setGroupName("");
+      }
     }
   };
 
@@ -61,7 +72,10 @@ const CreateGroupModal = ({ visible, onClose, onPick }: any) => {
               <TouchableOpacity
                 style={styles.btn_container}
                 activeOpacity={0.8}
-                onPress={handleCreateGroup}
+                onPress={() => {
+                  handleCreateGroup();
+                  onClose();
+                }}
               >
                 <Text style={styles.btn_text}>Create Group</Text>
               </TouchableOpacity>
