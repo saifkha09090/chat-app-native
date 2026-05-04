@@ -3,7 +3,16 @@ import { supabase } from "@/src/utils/supabase/supabase";
 export const fetchMessages = async (conversationId: string) => {
   const { data } = await supabase
     .from("messages")
-    .select("*")
+    .select(
+      `
+      *,
+      profiles:sender_id (
+        id,
+        full_name,
+        avatar_url
+      )
+    `,
+    )
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: false })
     .limit(50);

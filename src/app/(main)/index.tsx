@@ -15,22 +15,8 @@ import { moderateScale, scale } from "react-native-size-matters";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
 const ChatList = () => {
-  const {
-    filteredChats,
-    handleSearch,
-    currentUserId,
-    search,
-    formatTime,
-    handlePressChat,
-  } = useChatList();
-
-  const getOtherUser = (item: any) => {
-    return item.profiles || null;
-  };
-
-  const getReceiverId = (item: any) => {
-    return item.user_id || null;
-  };
+  const { filteredChats, handleSearch, search, formatTime, handlePressChat } =
+    useChatList();
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
@@ -47,41 +33,42 @@ const ChatList = () => {
 
       <FlatList
         data={filteredChats}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.conversation_id}
         keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => {
-          const user = getOtherUser(item);
-          const receiverId = getReceiverId(item);
-          // console.log(item);
+          const isGroup = item.is_group;
+
+          const name = isGroup
+            ? item.conversations?.name
+            : item.profiles?.full_name;
+
+          const avatar = isGroup
+            ? "https://cdn-icons-png.flaticon.com/512/6387/6387945.png"
+            : item.profiles?.avatar_url;
 
           return (
             <TouchableOpacity
               activeOpacity={0.8}
               style={styles.chatItem}
-              onPress={() => handlePressChat(user, receiverId)}
+              onPress={() => handlePressChat(item)}
             >
               <TouchableOpacity
                 activeOpacity={0.9}
                 onPress={() =>
+                  avatar &&
                   router.push({
                     pathname: "/(main)/imageView",
-                    params: {
-                      uri: item.profiles.avatar_url,
-                    },
+                    params: { uri: avatar },
                   })
                 }
               >
-                <Image
-                  source={{
-                    uri: item.profiles.avatar_url,
-                  }}
-                  style={styles.avatar}
-                />
+                <Image source={{ uri: avatar }} style={styles.avatar} />
               </TouchableOpacity>
 
               <View style={styles.chatInfo}>
                 <View style={styles.rowTop}>
-                  <Text style={styles.name}>{user?.full_name}</Text>
+                  <Text style={styles.name}>{name || "Chat"}</Text>
+
                   <Text style={styles.time}>
                     {formatTime(item.lastMessageTime)}
                   </Text>
@@ -99,6 +86,12 @@ const ChatList = () => {
           );
         }}
       />
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => router.push("/(main)/userSearch")}
+      >
+        <MaterialIcons name="add-comment" size={28} color="#fff" />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };

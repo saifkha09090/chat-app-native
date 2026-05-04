@@ -29,9 +29,10 @@ export const useChatList = () => {
           lastMessage: lastMsg?.text
             ? lastMsg.text
             : lastMsg?.image
-              ? "📸 " + " image"
+              ? "📸 Image"
               : "No message",
-          lastMessageTime: lastMsg?.created_at || chat.created_at,
+          lastMessageTime:
+            lastMsg?.created_at || chat.conversations?.created_at,
         };
       }),
     );
@@ -43,39 +44,48 @@ export const useChatList = () => {
     const chatmsg = await getmsg(chats);
 
     const sorted = sortChats(chatmsg);
+
     setRecentChats(sorted);
     setFilteredChats(sorted);
   };
 
-  const handlePressChat = (user: any, receiverId: any) => {
+  const handlePressChat = (chat: any) => {
     handleSearch("");
     setSearch("");
 
     router.push({
       pathname: "/(main)/chatScreen",
       params: {
-        name: user?.full_name || "User",
-        receiverId,
-        avatar: user?.avatar_url,
-        email: user?.email || "Email",
+        conversationId: chat.conversation_id,
+        receiverId: chat.is_group ? null : chat.userId,
+
+        name: chat.is_group
+          ? chat.conversations?.name
+          : chat.profiles?.full_name || "User",
+
+        avatar: chat.is_group
+          ? "https://cdn-icons-png.flaticon.com/512/6387/6387945.png"
+          : chat.profiles?.avatar_url,
       },
     });
   };
 
   const handleSearch = (text: string) => {
     setSearch(text);
+
     if (!text.trim()) {
       setFilteredChats(recentChats);
       return;
     }
+
     const filtered = recentChats.filter((chat) => {
-      if (!chat.conversations?.is_group) {
-        return chat.profiles?.full_name
+      if (chat.is_group) {
+        return chat.conversations?.name
           ?.toLowerCase()
           .includes(text.toLowerCase());
       }
 
-      return chat.conversations?.name
+      return chat.profiles?.full_name
         ?.toLowerCase()
         .includes(text.toLowerCase());
     });
@@ -118,6 +128,41 @@ export const useChatList = () => {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
         async () => {
+          await fetchChats(currentUserId);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUserId]);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const channel = supabase
+      .channel(`groups-${currentUserId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "conversations",
+        },
+        async (payload) => {
+          const newConversation = payload.new;
+
+          if (!newConversation.is_group) return;
+
+          const { data } = await supabase
+            .from("conversation_participants")
+            .select("*")
+            .eq("conversation_id", newConversation.id)
+            .eq("user_id", currentUserId);
+
+          if (!data?.length) return;
+
           await fetchChats(currentUserId);
         },
       )

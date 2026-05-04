@@ -12,7 +12,10 @@ export default function Layout() {
     pathname === "/" || pathname === "/calls" || pathname === "/status";
   return (
     <PaperProvider>
-      <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: "#000" }}>
+      <SafeAreaView
+        edges={["bottom"]}
+        style={{ flex: 1, backgroundColor: "#000" }}
+      >
         <Stack
           screenOptions={{
             headerStyle: {
@@ -94,6 +97,10 @@ export default function Layout() {
           <Stack.Screen name="calls" options={{ title: "Calls" }} />
           <Stack.Screen name="status" options={{ title: "Status" }} />
           <Stack.Screen name="otherUserProfile" options={{ title: "" }} />
+          <Stack.Screen
+            name="createGroup"
+            options={{ title: "Create Group" }}
+          />
         </Stack>
 
         {showBottomNav && <BottomNav />}

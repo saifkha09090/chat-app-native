@@ -1,8 +1,8 @@
 import { getOrCreateConversation } from "@/src/services/chatServices";
 import {
-    fetchMessages,
-    sendImageMessage,
-    sendTextMessage,
+  fetchMessages,
+  sendImageMessage,
+  sendTextMessage,
 } from "@/src/services/messagesService";
 import { supabase } from "@/src/utils/supabase/supabase";
 import * as ImagePicker from "expo-image-picker";
@@ -11,7 +11,10 @@ import Toast from "react-native-toast-message";
 import { getCurrentUser } from "../services/authServices";
 import { uploadImage } from "../services/uploadServices";
 
-export const useChat = (receiverId: string) => {
+export const useChat = (
+  receiverId: string | null,
+  existingConversationId?: string,
+) => {
   const [messages, setMessages] = useState<any[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -19,7 +22,7 @@ export const useChat = (receiverId: string) => {
 
   useEffect(() => {
     init();
-  }, [receiverId]);
+  }, [receiverId, existingConversationId]);
 
   const init = async () => {
     const user = await getCurrentUser();
@@ -27,11 +30,24 @@ export const useChat = (receiverId: string) => {
 
     setCurrentUserId(user.id);
 
-    const conv = await getOrCreateConversation(user.id, receiverId);
-    setConversationId(conv.id);
+    if (existingConversationId) {
+      setConversationId(existingConversationId);
 
-    const msgs = await fetchMessages(conv.id);
-    setMessages(msgs);
+      const msgs = await fetchMessages(existingConversationId);
+      console.log(msgs);
+
+      setMessages(msgs);
+      return;
+    }
+
+    if (receiverId) {
+      const conv = await getOrCreateConversation(user.id, receiverId);
+      setConversationId(conv.id);
+
+      const msgs = await fetchMessages(conv.id);
+
+      setMessages(msgs);
+    }
   };
 
   useEffect(() => {
@@ -61,34 +77,15 @@ export const useChat = (receiverId: string) => {
 
   const sendImage = async (useCamera = false) => {
     if (!currentUserId || !conversationId) return;
+
     try {
       if (useCamera) {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
-
-        if (status !== "granted") {
-          Toast.show({
-            type: "error",
-            text1: "Camera permission required",
-            text2: "Please allow camera access.",
-            position: "top",
-            visibilityTime: 2000,
-          });
-          return;
-        }
+        if (status !== "granted") return;
       } else {
         const { status } =
           await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-        if (status !== "granted") {
-          Toast.show({
-            type: "error",
-            text1: "Permission required",
-            text2: "Please allow gallery access.",
-            position: "top",
-            visibilityTime: 2000,
-          });
-          return;
-        }
+        if (status !== "granted") return;
       }
 
       const result = useCamera
@@ -98,7 +95,6 @@ export const useChat = (receiverId: string) => {
           })
         : await ImagePicker.launchImageLibraryAsync({
             mediaTypes: "images",
-            allowsEditing: false,
             quality: 0.8,
           });
 
@@ -109,35 +105,16 @@ export const useChat = (receiverId: string) => {
       setUploading(true);
 
       const uri = asset.uri;
+      const fileName = `${currentUserId}/${Date.now()}.jpg`;
 
-      const fileNameFromUri = uri.split("/").pop() || `file_${Date.now()}`;
-      const ext = fileNameFromUri.split(".").pop()?.toLowerCase() || "jpg";
+      const url = await uploadImage(uri, fileName, "image/jpeg");
 
-      let mimeType = asset.mimeType;
-
-      if (!mimeType) {
-        if (ext === "gif") mimeType = "image/gif";
-        else if (ext === "png") mimeType = "image/png";
-        else mimeType = "image/jpeg";
-      }
-
-      const fileName = `${currentUserId ?? "anonymous"}/${Date.now()}.${ext}`;
-
-      const url = await uploadImage(uri, fileName, mimeType);
-
-      const { error } = await sendImageMessage(
-        url,
-        currentUserId,
-        conversationId,
-      );
-    } catch (error) {
-      console.error("Upload error:", error);
+      await sendImageMessage(url, currentUserId, conversationId);
+    } catch (error: any) {
       Toast.show({
         type: "error",
         text1: "Error",
-        text2: error instanceof Error ? error.message : "Something went wrong",
-        position: "top",
-        visibilityTime: 2000,
+        text2: error.message,
       });
     } finally {
       setUploading(false);

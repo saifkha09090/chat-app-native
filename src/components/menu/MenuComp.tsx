@@ -1,12 +1,11 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
-import { IconButton, Menu, Portal } from "react-native-paper";
-import CreateGroupModal from "../modal/CreateGroupModal";
+import { IconButton, Menu } from "react-native-paper";
 
 export default function MenuComp() {
   const [visible, setVisible] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
+  // const [modalVisible, setModalVisible] = useState(false);
 
   const openMenu = () => setVisible(true);
   const closeMenu = () => setVisible(false);
@@ -39,17 +38,18 @@ export default function MenuComp() {
           style={{ height: 30, marginTop: 15 }}
           onPress={() => {
             closeMenu();
-            setModalVisible(true);
+            // setModalVisible(true);
+            router.push("/(main)/createGroup");
           }}
           title="New Group"
         />
       </Menu>
-      <Portal>
+      {/* <Portal>
         <CreateGroupModal
           visible={modalVisible}
           onClose={() => setModalVisible(false)}
         />
-      </Portal>
+      </Portal> */}
     </View>
   );
 }

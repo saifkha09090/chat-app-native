@@ -21,12 +21,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
 const ChatScreen = () => {
-  const { name, receiverId } = useLocalSearchParams();
+  const { receiverId, conversationId, name } = useLocalSearchParams();
+  const { messages, sendMessage, sendImage, uploading, currentUserId } =
+    useChat(receiverId as string | null, conversationId as string);
   const keyboardHeight = useKeyboard();
-  const { modalVisible, setModalVisible, handleImageOption } = useProfile();
 
-  const { messages, currentUserId, sendMessage, sendImage, uploading } =
-    useChat(receiverId as string);
+  const { modalVisible, setModalVisible, handleImageOption } = useProfile();
 
   const [inputText, setInputText] = useState("");
 
@@ -34,49 +34,167 @@ const ChatScreen = () => {
     const isMe = item.sender_id === currentUserId;
 
     return (
-      <>
+      <View style={{ marginBottom: 10 }}>
         {!item.text ? (
-          <View
-            style={[
-              styles.messageBubbleImg,
-              isMe ? styles.myMessage : styles.otherMessage,
-            ]}
-          >
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() =>
-                router.push({
-                  pathname: "/(main)/imageView",
-                  params: { uri: item.image },
-                })
-              }
+          !isMe ? (
+            <View style={{ flexDirection: "row" }}>
+              <Image
+                source={{ uri: item.profiles?.avatar_url }}
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 15,
+                  marginRight: 5,
+                }}
+              />
+              <View
+                style={[
+                  styles.messageBubbleImg,
+                  isMe ? styles.myMessage : styles.otherMessage,
+                ]}
+              >
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(main)/imageView",
+                      params: { uri: item.image },
+                    })
+                  }
+                >
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: "#007bff",
+                      paddingBottom: 4,
+                    }}
+                  >
+                    {item.profiles?.full_name}
+                  </Text>
+                  <Image source={{ uri: item.image }} style={styles.image} />
+                </TouchableOpacity>
+
+                <Text style={styles.timeTextImg}>
+                  {new Date(item.created_at).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <View style={{ flexDirection: "row", alignSelf: "flex-end" }}>
+              <View
+                style={[
+                  styles.messageBubbleImg,
+                  isMe ? styles.myMessage : styles.otherMessage,
+                ]}
+              >
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(main)/imageView",
+                      params: { uri: item.image },
+                    })
+                  }
+                >
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: "#007bff",
+                      paddingBottom: 4,
+                    }}
+                  >
+                    {item.profiles?.full_name}
+                  </Text>
+                  <Image source={{ uri: item.image }} style={styles.image} />
+                </TouchableOpacity>
+
+                <Text style={styles.timeTextImg}>
+                  {new Date(item.created_at).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </Text>
+              </View>
+              <Image
+                source={{ uri: item.profiles?.avatar_url }}
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 15,
+                  marginLeft: 5,
+                }}
+              />
+            </View>
+          )
+        ) : isMe ? (
+          <View style={{ flexDirection: "row", alignSelf: "flex-end" }}>
+            <View
+              style={[
+                styles.messageBubble,
+                isMe ? styles.myMessage : styles.otherMessage,
+              ]}
             >
-              <Image source={{ uri: item.image }} style={styles.image} />
-            </TouchableOpacity>
-            <Text style={styles.timeTextImg}>
-              {new Date(item.created_at).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </Text>
+              <Text
+                style={{ fontSize: 12, color: "#007bff", paddingBottom: 4 }}
+              >
+                {item.profiles?.full_name}
+              </Text>
+              <Text style={styles.messageText}>{item.text}</Text>
+
+              <Text style={styles.timeText}>
+                {new Date(item.created_at).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </Text>
+            </View>
+            <Image
+              source={{ uri: item.profiles?.avatar_url }}
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: 15,
+                marginLeft: 5,
+              }}
+            />
           </View>
         ) : (
-          <View
-            style={[
-              styles.messageBubble,
-              isMe ? styles.myMessage : styles.otherMessage,
-            ]}
-          >
-            <Text style={styles.messageText}>{item.text}</Text>
-            <Text style={styles.timeText}>
-              {new Date(item.created_at).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </Text>
+          <View style={{ flexDirection: "row" }}>
+            <Image
+              source={{ uri: item.profiles?.avatar_url }}
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: 15,
+                marginRight: 5,
+              }}
+            />
+            <View
+              style={[
+                styles.messageBubble,
+                isMe ? styles.myMessage : styles.otherMessage,
+              ]}
+            >
+              <Text
+                style={{ fontSize: 12, color: "#007bff", paddingBottom: 4 }}
+              >
+                {item.profiles?.full_name}
+              </Text>
+              <Text style={styles.messageText}>{item.text}</Text>
+
+              <Text style={styles.timeText}>
+                {new Date(item.created_at).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </Text>
+            </View>
           </View>
         )}
-      </>
+      </View>
     );
   };
 
@@ -162,11 +280,12 @@ const styles = StyleSheet.create({
   },
   listPadding: { paddingHorizontal: scale(10), paddingBottom: scale(10) },
   messageBubble: {
-    padding: moderateScale(10),
+    paddingBottom: verticalScale(5),
+    paddingTop: 1,
+    paddingHorizontal: moderateScale(10),
     borderRadius: moderateScale(10),
     marginVertical: verticalScale(5),
     maxWidth: "80%",
-    // elevation: 1,
     shadowColor: "#fff",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -178,6 +297,7 @@ const styles = StyleSheet.create({
   },
   messageBubbleImg: {
     padding: moderateScale(4),
+    paddingTop: 1,
     borderRadius: moderateScale(10),
     marginVertical: verticalScale(5),
     maxWidth: "80%",
@@ -202,7 +322,6 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(8),
     color: "#888",
     textAlign: "right",
-    marginTop: 6,
   },
   timeTextImg: {
     position: "absolute",
